@@ -227,15 +227,18 @@ def build_coverage_report(root: str | Path | None = None) -> pd.DataFrame:
                     row["status"] = "present"
                     names = set(pf.schema.names)
                     date_col = next((c for c in ("Date", "date") if c in names), None)
-                    if date_col:
-                        dates = pd.read_parquet(p, columns=[date_col])[date_col]
-                    elif p.stat().st_size <= 5 * 1024 * 1024:
-                        # Some source files store their observation dates as a
-                        # DatetimeIndex, not a physical Date/date data column.
+                    if p.stat().st_size <= 5 * 1024 * 1024:
+                        # Read small files as frames so pandas can restore a
+                        # DatetimeIndex stored through Parquet metadata.
                         small_frame = pd.read_parquet(p)
-                        dates = (small_frame.index if isinstance(
-                            small_frame.index, pd.DatetimeIndex
-                        ) else None)
+                        if date_col and date_col in small_frame.columns:
+                            dates = small_frame[date_col]
+                        elif isinstance(small_frame.index, pd.DatetimeIndex):
+                            dates = small_frame.index
+                        else:
+                            dates = None
+                    elif date_col:
+                        dates = pd.read_parquet(p, columns=[date_col])[date_col]
                     else:
                         dates = None
                     if dates is not None:
