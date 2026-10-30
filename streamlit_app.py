@@ -65,7 +65,8 @@ with st.sidebar:
     st.caption('PERSONAL WEALTH INTELLIGENCE')
     st.divider()
     pages=['Overview','Wealth conversation','My financial profile','Portfolio strategy','Goals & simulations','Risk lab','Tax intelligence','Market intelligence','Learn']
-    page=st.radio('WORKSPACE',pages,index=pages.index(st.session_state.page) if st.session_state.page in pages else 0,label_visibility='collapsed')
+    labels={'Wealth conversation':'Wealth assistant (coming soon)','Portfolio strategy':'Investment strategy','Goals & simulations':'My goals','Risk lab':'Portfolio risk','Tax intelligence':'Tax planning'}
+    page=st.radio('WORKSPACE',pages,index=pages.index(st.session_state.page) if st.session_state.page in pages else 0,format_func=lambda item: labels.get(item,item),label_visibility='collapsed')
     st.session_state.page=page
     st.divider(); st.caption('SIGNED IN AS'); st.write(email)
     st.caption('Local account • SQLite')
@@ -86,7 +87,7 @@ if all(k in profile for k in ['monthly_investment','risk_score','goal_years','go
     except Exception as e: st.warning(f'Portfolio engine needs profile review: {e}')
 
 if page=='Overview':
-    st.markdown(f'<div class="hero"><h1>Good to see you.</h1><p>Your financial picture, goals and investment strategy in one place.</p></div>',unsafe_allow_html=True)
+    st.markdown(f'<div class="hero"><h1>Your financial picture, in one place.</h1><p>Understand where you stand, what you are working towards and how your investments are positioned.</p></div>',unsafe_allow_html=True)
     if not profile:
         st.info('Start by building your financial profile. You can do this conversationally or enter the essentials in My financial profile.')
         if st.button('Build my financial profile',type='primary'): st.session_state.page='My financial profile'; st.rerun()
@@ -94,17 +95,19 @@ if page=='Overview':
         a=analysis or {}
         c1,c2,c3,c4=st.columns(4)
         c1.metric('Monthly investable amount',f"₹{profile.get('monthly_investment',0):,.0f}")
-        c2.metric('Risk score',f"{profile.get('risk_score',0)}/100")
-        c3.metric('Modelled return',f"{a.get('expected_return',0):.1%}")
-        c4.metric('Modelled volatility',f"{a.get('volatility',0):.1%}")
+        c2.metric('Investment risk profile',f"{profile.get('risk_score',0)}/100",help='A summary of your willingness and financial ability to take investment risk.')
+        c3.metric('Expected annual growth',f"{a.get('expected_return',0):.1%}",help='An assumption-based estimate, not a promised return.')
+        c4.metric('Expected portfolio fluctuations',f"{a.get('volatility',0):.1%}",help='A measure of how widely returns may vary. Losses can be larger than this estimate.')
         st.subheader('Your financial outlook')
         l,r=st.columns([1.25,1])
         with l:
             st.markdown('#### Goal trajectory')
             g=a.get('goal_simulation',{})
-            st.metric('Simulated goal attainment',f"{g.get('goal_probability',0):.1%}",help='Scenario probability from historical block bootstrap where data permits, otherwise Gaussian proxy assumptions.')
-            st.write(f"**Today's target:** ₹{profile.get('goal_amount',0):,.0f} · **Inflation-adjusted target:** ₹{a.get('future_goal',profile.get('goal_amount',0)):,.0f} · **Horizon:** {profile.get('goal_years',0)} years")
-            st.write(f"**Median simulated corpus:** ₹{g.get('median',0):,.0f}")
+            st.metric('Estimated chance of reaching this goal',f"{g.get('goal_probability',0):.1%}",help='Share of simulated scenarios in which the projected investment value reaches the inflation-adjusted target. This is not a guarantee.')
+            st.write(f"**Your target today:** ₹{profile.get('goal_amount',0):,.0f} · **Estimated amount needed in {profile.get('goal_years',0)} years:** ₹{a.get('future_goal',profile.get('goal_amount',0)):,.0f}")
+            st.write(f"**Middle simulation outcome:** ₹{g.get('median',0):,.0f}")
+            if g.get('goal_probability',0) < 0.05:
+                st.warning('The current plan appears unlikely to reach this target. Review the monthly contribution, target amount and time available. The detailed goal planner can estimate the contribution required under the model assumptions.')
             st.caption('Not a guaranteed forecast. Results depend on return, volatility, inflation and contribution assumptions.')
         with r:
             st.markdown('#### Current market regime')
@@ -120,7 +123,7 @@ if page=='Overview':
     st.caption('Prototype notice: no brokerage connectivity, trade execution or regulated investment advice. Assumptions and proxy data are disclosed in Market intelligence.')
 
 elif page=='My financial profile':
-    st.title('Your financial profile'); st.write('Your financial plan should reflect your life, not just your age or salary.')
+    st.title('Your financial profile'); st.write('A clearer picture of your income, spending, savings and priorities helps build a more useful plan.')
     with st.form('profile'):
         c1,c2,c3=st.columns(3)
         age=c1.number_input('Age',18,100,int(profile.get('age',28)))
@@ -167,7 +170,8 @@ elif page=='My financial profile':
         st.info(f"Saved profile: {profile.get('goal_name')} · risk tolerance {profile.get('risk_tolerance')}/100 · risk capacity {profile.get('risk_capacity')}/100. These are separate dimensions, not a psychometric diagnosis. Career: {profile.get('profession','not supplied')} · income growth assumption: {profile.get('income_growth',0):.1%}/year.")
 
 elif page=='Portfolio strategy':
-    st.title('Portfolio strategy'); st.write('Constrained allocation built from historical evidence plus explicit priors.')
+    st.title('Investment strategy'); st.write('See how a diversified mix of investments could be allocated across your monthly budget.')
+    st.caption('The calculations use historical data where available and clearly labelled assumptions where reliable investment-return data is not yet available.')
     if not profile: st.warning('Complete your financial profile first.')
     else:
         objective=st.selectbox('Optimisation objective',['balanced_utility','min_variance','risk_parity'],format_func=lambda x:{'balanced_utility':'Balanced return-risk utility','min_variance':'Minimum variance','risk_parity':'Risk parity'}[x])
@@ -183,8 +187,9 @@ elif page=='Portfolio strategy':
         st.warning('Several assets use prior expected returns, volatility and correlation assumptions. The covariance matrix is positive-semidefinite repaired. This is a prototype optimiser, not a verified investable portfolio.')
 
 elif page=='Goals & simulations':
-    st.title('Household goals & scenario analysis')
-    st.write('Each goal has its own target, time horizon and notional portfolio. Contributions are constrained by one shared household surplus so the same rupee is not allocated twice.')
+    st.title('Your goals and future plans')
+    st.write('Plan for several goals at once. The planner shares your monthly investment budget across them so the same money is never counted twice.')
+    st.caption('A simulation tests many possible market paths. It helps show a range of outcomes; it cannot predict exactly what will happen.')
     if not profile: st.info('Complete your financial profile first.')
     else:
         goals=list(profile.get('goals') or [{'name':profile.get('goal_name','Primary goal'),'target_today':profile.get('goal_amount',0),'years':profile.get('goal_years',10),'monthly_contribution':profile.get('monthly_investment',0),'current_corpus':profile.get('current_savings',0),'inflation':profile.get('goal_inflation',.06)}])
@@ -195,13 +200,13 @@ elif page=='Goals & simulations':
             add=st.form_submit_button('Add goal')
         if add and gn.strip():
             goals.append({'name':gn.strip(),'target_today':gt,'years':gy,'monthly_contribution':gc,'current_corpus':corpus,'inflation':infl}); profile['goals']=goals; save_profile(uid,profile); st.rerun()
-        st.markdown('#### Shared household cash flow')
+        st.markdown('#### Your monthly investment budget')
         c1,c2,c3=st.columns(3); c1.metric('Current monthly surplus',f"₹{max(0,profile.get('income',0)-profile.get('expenses',0)-profile.get('debt_payment',0)):,.0f}"); c2.metric('Requested goal contributions',f"₹{sum(float(g.get('monthly_contribution',0)) for g in goals):,.0f}"); c3.metric('Current monthly investment budget',f"₹{profile.get('monthly_investment',0):,.0f}")
         surplus=max(0,profile.get('income',0)-profile.get('expenses',0)-profile.get('debt_payment',0)); funded=allocate_household_surplus(goals,min(surplus,profile.get('monthly_investment',surplus)))
         st.dataframe(pd.DataFrame(funded)[['name','target_today','years','monthly_contribution','funded_monthly','funding_ratio','current_corpus']].style.format({'target_today':'₹{:,.0f}','monthly_contribution':'₹{:,.0f}','funded_monthly':'₹{:,.0f}','funding_ratio':'{:.1%}','current_corpus':'₹{:,.0f}'}),hide_index=True,use_container_width=True)
         if sum(g['monthly_contribution'] for g in goals)>min(surplus,profile.get('monthly_investment',surplus)):
             st.warning('Requested contributions exceed the shared investment budget. Contributions are scaled pro-rata; increase the budget, reduce targets or extend goal dates.')
-        st.markdown('#### Career-adjusted household cash-flow scenarios')
+        st.markdown('#### How your income could change over time')
         years_view=st.slider('Projection horizon (years)',1,30,15)
         paths=[]
         for scen in ['conservative','base','optimistic']:
@@ -209,7 +214,7 @@ elif page=='Goals & simulations':
             paths.append({'Scenario':scen.title(),'Year':list(range(years_view+1))[-1],'Monthly income at horizon':vals[-1]})
         st.dataframe(pd.DataFrame(paths).style.format({'Monthly income at horizon':'₹{:,.0f}'}),hide_index=True,use_container_width=True)
         st.line_chart(pd.DataFrame({'Conservative':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'conservative'),'Base':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'base'),'Optimistic':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'optimistic')}))
-        st.markdown('#### Correlated household Monte Carlo')
+        st.markdown('#### Chance of reaching each goal')
         base_return=float((analysis or {}).get('expected_return',0.08))
         base_vol=float((analysis or {}).get('volatility',0.12))
         try:
@@ -232,10 +237,11 @@ elif page=='Goals & simulations':
                 c2.metric('Goals funded monthly',f"₹{multi['funded_total']:,.0f}")
                 c3.metric('Joint simulation paths',f"{multi['joint_simulations']:,}")
                 st.dataframe(
-                    goal_results[['name','years','inflation_adjusted_target','funded_monthly','annual_return_assumption','volatility_assumption','goal_probability','p10','median','p90','status']].style.format({
-                        'inflation_adjusted_target':'₹{:,.0f}','funded_monthly':'₹{:,.0f}',
-                        'annual_return_assumption':'{:.1%}','volatility_assumption':'{:.1%}',
-                        'goal_probability':'{:.1%}','p10':'₹{:,.0f}','median':'₹{:,.0f}','p90':'₹{:,.0f}'
+                    goal_results[['name','years','inflation_adjusted_target','funded_monthly','required_monthly_at_assumed_return','goal_probability','p10','median','p90','status']].rename(columns={
+                        'name':'Goal','years':'Years left','inflation_adjusted_target':'Target at goal date','funded_monthly':'Monthly amount allocated','required_monthly_at_assumed_return':'Estimated monthly amount needed','goal_probability':'Chance of success','p10':'Lower outcome (10%)','median':'Middle outcome','p90':'Higher outcome (90%)','status':'Current plan'
+                    }).style.format({
+                        'Target at goal date':'₹{:,.0f}','Monthly amount allocated':'₹{:,.0f}','Estimated monthly amount needed':'₹{:,.0f}',
+                        'Chance of success':'{:.1%}','Lower outcome (10%)':'₹{:,.0f}','Middle outcome':'₹{:,.0f}','Higher outcome (90%)':'₹{:,.0f}'
                     }),
                     hide_index=True,use_container_width=True
                 )
@@ -256,8 +262,9 @@ elif page=='Goals & simulations':
 
 
 elif page=='Risk lab':
-    st.title('Risk research lab')
-    st.write('Explore historical tail risk, regime-conditioned scenarios and a walk-forward allocation baseline. Results depend on the selected historical sample and are not forecasts.')
+    st.title('Portfolio risk and stress testing')
+    st.write('Explore how your investments behaved in past market declines, how outcomes may vary and how a strategy compares with a benchmark.')
+    st.caption('For users who want to understand downside risk in more depth. Historical losses and simulations are estimates, not limits on future losses.')
     if prices.empty or len(prices.columns) < 2:
         st.warning('Build the external price panel and mutual-fund NAV panel to expand empirical coverage.')
     else:
@@ -314,11 +321,20 @@ elif page=='Risk lab':
                 st.info(f'Walk-forward backtest unavailable: {exc}')
 
 elif page=='Tax intelligence':
-    st.title('Tax intelligence')
-    st.write('Compare both tax regimes against your salary and eligible deductions before choosing. The calculation is a simplified salary-only estimate for Tax Year 2026-27.')
+    st.title('Tax planning')
+    st.write('Compare the old and new income-tax regimes using your income and eligible deductions. The estimate is simplified and uses the tax assumptions shown below for Tax Year 2026-27.')
     st.warning('Not a tax return or CA opinion. It excludes surcharge, marginal relief, capital gains, special-rate income, HRA and several individual deductions. Verify eligibility and current law before acting.')
     gross=st.number_input('Annual gross salary (₹)',0,100000000,int(profile.get('income',0)*12),step=50000)
-    deductions=st.number_input('Old-regime eligible deductions / exemptions aggregate (₹)',0,10000000, min(500000,int(profile.get('existing_80c',0)+0)),step=10000,help='Enter only amounts you have verified as eligible: e.g. 80C, 80D, eligible HRA and home-loan interest, subject to their separate limits and rules.')
+    with st.expander('Understand the tax regimes and Section 80C'):
+        st.markdown('**New tax regime**')
+        st.write('Uses its own income-tax slab rates and allows fewer deductions. It may suit people who do not claim many deductions.')
+        st.markdown('**Old tax regime**')
+        st.write('Uses different slab rates and allows specified deductions and exemptions when eligibility rules are met. It may suit people with substantial eligible deductions.')
+        st.markdown('**What is Section 80C?**')
+        st.write('Section 80C allows eligible taxpayers using the old regime to deduct specified investments and payments from taxable income. The combined annual limit is generally ₹1.5 lakh, subject to the applicable rules.')
+        st.write('Examples include eligible EPF contributions, PPF, ELSS tax-saving mutual funds, life-insurance premiums, NSC and certain tuition-fee or home-loan principal payments. Each has separate conditions, lock-ins or documentation requirements.')
+        st.info('A deduction is not a cash refund. A ₹50,000 eligible deduction reduces taxable income by ₹50,000; the tax saved depends on the applicable tax rate. The usual 80C deduction is generally unavailable under the new regime.')
+    deductions=st.number_input('Total eligible deductions and exemptions under the old regime (₹)',0,10000000, min(500000,int(profile.get('existing_80c',0))),step=10000,help='Enter the total amount you expect to be eligible to claim under the old regime. Do not count a payment twice. Section 80C has a combined annual limit of generally ₹1.5 lakh; other deductions have separate rules.')
     other=st.number_input('Other ordinary taxable income (₹)',0,100000000,0,step=10000)
     comp=compare_regimes(gross,deductions,other)
     c1,c2,c3=st.columns(3); c1.metric('Estimated new-regime tax',f"₹{comp['new']['tax_including_cess']:,.0f}"); c2.metric('Estimated old-regime tax',f"₹{comp['old']['tax_including_cess']:,.0f}"); c3.metric('Lower estimate',comp['recommended'],delta=f"₹{comp['difference']:,.0f} lower")
