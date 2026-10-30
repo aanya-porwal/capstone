@@ -1,0 +1,40 @@
+DWMS REVISION UPDATE — WINDOWS 11
+
+IMPORTANT: Stop the running Streamlit app with Ctrl+C before updating. This ZIP does not include your local user database or virtual environment.
+
+1. Find your current project folder. Based on the previous setup it is:
+   C:\Users\<YOUR_WINDOWS_USER>\Downloads\DWMS_local_prototype\dwms_work
+
+2. Back up your local database if it exists:
+   Copy data\dwms_users.db to a safe location outside the project folder.
+   This database contains your local accounts, saved profiles and chat history.
+
+3. Extract this ZIP to a temporary folder, for example:
+   C:\Users\<YOUR_WINDOWS_USER>\Downloads\DWMS_revision_2
+   The extracted folder contains dwms_work.
+
+4. Copy the CONTENTS of the extracted dwms_work folder into your existing dwms_work folder and allow source files to be overwritten. Do not delete your existing data folder. If Windows asks about overwriting data files, do not overwrite your existing database. The ZIP intentionally excludes dwms_users.db.
+
+5. Open PowerShell in the existing dwms_work folder and activate your existing environment:
+   .\.venv\Scripts\Activate.ps1
+
+6. Update dependencies:
+   python -m pip install --upgrade pip
+   pip install -r requirements-prototype.txt
+
+7. Run tests:
+   pytest -q
+   Expected result for this packaged revision: 87 passed.
+
+8. Launch:
+   streamlit run streamlit_app.py
+
+If activation fails because PowerShell blocks scripts, run this once in that PowerShell window, then activate again:
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
+If you prefer a clean environment, keep the old .venv and create a new one only after confirming Python 3.10 or 3.11 is installed:
+   py -3.10 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements-prototype.txt
+
+Data note: existing local data/prices downloads are preserved by the copy/merge procedure. Review data/data_quality_manifest.json and data/prices/download_manifest.json before using downloaded proxy series in analysis.

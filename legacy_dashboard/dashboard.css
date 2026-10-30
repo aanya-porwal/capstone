@@ -1,0 +1,945 @@
+/* ============================================================
+   WEALTH AI - MAIN STYLES
+   ============================================================ */
+
+
+/* ============================================================
+   GLOBAL
+   ============================================================ */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+body {
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+
+    background: #f4f6f8;
+    color: #1f2937;
+
+    min-height: 100vh;
+}
+
+
+/* ============================================================
+   DASHBOARD CONTAINER
+   ============================================================ */
+
+.dashboard {
+    width: 100%;
+    max-width: 1400px;
+
+    margin: 0 auto;
+
+    padding: 32px;
+}
+
+
+/* ============================================================
+   SCREEN SYSTEM
+   ============================================================ */
+
+.screen {
+    width: 100%;
+}
+
+
+.hidden {
+    display: none !important;
+}
+
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
+.header {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    gap: 24px;
+
+    margin-bottom: 32px;
+}
+
+
+.header h1 {
+    font-size: 34px;
+    font-weight: 700;
+
+    color: #111827;
+
+    margin-bottom: 6px;
+}
+
+
+.header p {
+    font-size: 16px;
+
+    color: #6b7280;
+}
+
+
+/* ============================================================
+   INPUT SCREEN
+   ============================================================ */
+
+#inputScreen {
+    max-width: 850px;
+
+    margin: 0 auto;
+}
+
+
+#inputScreen .header {
+    text-align: center;
+
+    display: block;
+
+    margin-bottom: 36px;
+}
+
+
+#inputScreen .header h1 {
+    font-size: 42px;
+}
+
+
+#inputScreen .header p {
+    font-size: 18px;
+}
+
+
+/* ============================================================
+   INPUT PANEL
+   ============================================================ */
+
+.input-panel {
+    background: white;
+
+    border-radius: 18px;
+
+    padding: 36px;
+
+    box-shadow:
+        0 8px 30px rgba(15, 23, 42, 0.08);
+
+    border: 1px solid #e5e7eb;
+}
+
+
+.input-panel h2 {
+    font-size: 20px;
+
+    color: #111827;
+
+    margin-bottom: 22px;
+
+    padding-bottom: 10px;
+
+    border-bottom: 1px solid #e5e7eb;
+}
+
+
+.input-panel h2:not(:first-child) {
+    margin-top: 34px;
+}
+
+
+/* ============================================================
+   INPUT GROUP
+   ============================================================ */
+
+.input-group {
+    margin-bottom: 22px;
+}
+
+
+.input-group label {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    color: #374151;
+
+    margin-bottom: 9px;
+}
+
+
+.input-group label span {
+    font-weight: 700;
+
+    color: #2563eb;
+}
+
+
+/* ============================================================
+   NUMBER INPUTS
+   ============================================================ */
+
+.input-group input[type="number"] {
+    width: 100%;
+
+    padding: 13px 14px;
+
+    border: 1px solid #d1d5db;
+
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    color: #111827;
+
+    font-size: 15px;
+
+    outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+
+.input-group input[type="number"]:focus {
+    border-color: #2563eb;
+
+    box-shadow:
+        0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+
+/* ============================================================
+   RANGE SLIDERS
+   ============================================================ */
+
+.input-group input[type="range"] {
+    width: 100%;
+
+    height: 6px;
+
+    cursor: pointer;
+
+    accent-color: #2563eb;
+}
+
+
+/* ============================================================
+   PRIMARY BUTTON
+   ============================================================ */
+
+.primary-button {
+    width: 100%;
+
+    margin-top: 18px;
+
+    padding: 15px 20px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    background: #2563eb;
+
+    color: white;
+
+    font-size: 16px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+
+.primary-button:hover {
+    background: #1d4ed8;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 6px 18px rgba(37, 99, 235, 0.25);
+}
+
+
+.primary-button:active {
+    transform: translateY(0);
+}
+
+
+.primary-button:disabled {
+    opacity: 0.7;
+
+    cursor: wait;
+
+    transform: none;
+}
+
+
+/* ============================================================
+   SECONDARY BUTTON
+   ============================================================ */
+
+.secondary-button {
+    padding: 11px 18px;
+
+    border: 1px solid #d1d5db;
+
+    border-radius: 9px;
+
+    background: white;
+
+    color: #374151;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease;
+}
+
+
+.secondary-button:hover {
+    background: #f9fafb;
+
+    border-color: #9ca3af;
+}
+
+
+/* ============================================================
+   RESULTS PANEL
+   ============================================================ */
+
+.results-panel {
+    width: 100%;
+}
+
+
+.results-panel h2 {
+    font-size: 24px;
+
+    color: #111827;
+
+    margin-bottom: 20px;
+}
+
+
+/* ============================================================
+   KPI GRID
+   ============================================================ */
+
+.kpi-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 18px;
+
+    margin-bottom: 20px;
+}
+
+
+.kpi-card {
+    background: white;
+
+    border: 1px solid #e5e7eb;
+
+    border-radius: 14px;
+
+    padding: 22px;
+
+    box-shadow:
+        0 5px 18px rgba(15, 23, 42, 0.05);
+}
+
+
+.kpi-card span {
+    display: block;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    color: #6b7280;
+
+    margin-bottom: 10px;
+}
+
+
+.kpi-card strong {
+    display: block;
+
+    font-size: 26px;
+
+    font-weight: 700;
+
+    color: #111827;
+}
+
+
+/* ============================================================
+   RESULT CARDS
+   ============================================================ */
+
+.result-card {
+    background: white;
+
+    border: 1px solid #e5e7eb;
+
+    border-radius: 14px;
+
+    padding: 28px;
+
+    margin-bottom: 20px;
+
+    box-shadow:
+        0 5px 18px rgba(15, 23, 42, 0.05);
+}
+
+
+.result-card h3 {
+    font-size: 19px;
+
+    color: #111827;
+
+    margin-bottom: 10px;
+}
+
+
+.chart-description {
+    color: #6b7280;
+
+    font-size: 14px;
+
+    margin-bottom: 20px;
+}
+
+
+/* ============================================================
+   PROJECTED WEALTH
+   ============================================================ */
+
+.big-number {
+    font-size: 42px;
+
+    font-weight: 700;
+
+    color: #2563eb;
+
+    margin: 12px 0;
+}
+
+
+#goalStatus {
+    font-size: 15px;
+
+    font-weight: 600;
+
+    color: #374151;
+}
+
+
+/* ============================================================
+   WEALTH CHART
+   ============================================================ */
+
+.wealth-chart {
+    width: 100%;
+
+    min-height: 350px;
+
+    margin-top: 15px;
+
+    overflow: hidden;
+}
+
+
+.wealth-svg {
+    width: 100%;
+
+    height: 350px;
+
+    display: block;
+}
+
+
+.chart-line {
+    stroke: #2563eb;
+
+    stroke-width: 4;
+
+    stroke-linecap: round;
+
+    stroke-linejoin: round;
+}
+
+
+.chart-area {
+    fill: rgba(37, 99, 235, 0.08);
+}
+
+
+.chart-point {
+    fill: #2563eb;
+
+    stroke: white;
+
+    stroke-width: 3;
+}
+
+
+.chart-label {
+    fill: #6b7280;
+
+    font-size: 13px;
+}
+
+
+.chart-value {
+    fill: #111827;
+
+    font-size: 14px;
+
+    font-weight: 600;
+}
+
+
+.chart-placeholder {
+    min-height: 250px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    color: #6b7280;
+
+    font-size: 14px;
+}
+
+
+/* ============================================================
+   PORTFOLIO
+   ============================================================ */
+
+.portfolio-item {
+    margin-bottom: 22px;
+}
+
+
+.portfolio-item:last-child {
+    margin-bottom: 0;
+}
+
+
+.portfolio-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 8px;
+}
+
+
+.portfolio-header span {
+    font-size: 14px;
+
+    font-weight: 600;
+
+    color: #374151;
+}
+
+
+.portfolio-header strong {
+    font-size: 14px;
+
+    color: #111827;
+}
+
+
+.portfolio-bar {
+    width: 100%;
+
+    height: 10px;
+
+    background: #e5e7eb;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+}
+
+
+.portfolio-fill {
+    height: 100%;
+
+    background: #2563eb;
+
+    border-radius: 20px;
+
+    transition: width 0.5s ease;
+}
+
+
+/* ============================================================
+   RESPONSIVE - TABLET
+   ============================================================ */
+
+@media (max-width: 900px) {
+
+    .dashboard {
+        padding: 24px;
+    }
+
+
+    .kpi-grid {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+}
+
+
+/* ============================================================
+   RESPONSIVE - MOBILE
+   ============================================================ */
+
+@media (max-width: 600px) {
+
+    .dashboard {
+        padding: 16px;
+    }
+
+
+    #inputScreen .header h1 {
+        font-size: 34px;
+    }
+
+
+    .header {
+        flex-direction: column;
+
+        align-items: flex-start;
+    }
+
+
+    .header h1 {
+        font-size: 28px;
+    }
+
+
+    .input-panel {
+        padding: 24px 20px;
+    }
+
+
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+
+
+    .result-card {
+        padding: 20px;
+    }
+
+
+    .big-number {
+        font-size: 32px;
+    }
+
+
+    .wealth-chart {
+        min-height: 260px;
+    }
+
+
+    .wealth-svg {
+        height: 260px;
+    }
+
+
+    .secondary-button {
+        width: 100%;
+    }
+}
+
+
+/* Historical Market Analysis layout */
+#marketReportCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 20px;
+}
+
+#marketReportCards .kpi-card {
+    min-width: 0;
+}
+
+#marketReportCards .market-metrics p {
+    margin-bottom: 5px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+    #marketReportCards {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================================
+   WEALTH AI — PERSONALIZED GOAL PLAN
+   ============================================================ */
+
+.goal-plan-section {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.section-heading {
+    max-width: 720px;
+}
+
+.eyebrow {
+    margin: 0 0 8px;
+    color: #527b69;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+}
+
+.section-heading h3 {
+    margin: 0 0 8px;
+    color: #172b24;
+    font-size: clamp(22px, 3vw, 30px);
+    letter-spacing: -0.8px;
+}
+
+.chart-description {
+    color: #68766f;
+    line-height: 1.65;
+}
+
+.goal-allocation-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.allocation-summary-card {
+    min-width: 0;
+    padding: 20px;
+    background: #f4f7f4;
+    border: 1px solid #e3ebe5;
+    border-radius: 16px;
+}
+
+.allocation-label,
+.goal-target-row span,
+.goal-contribution-grid span,
+.goal-projection > span {
+    display: block;
+    margin-bottom: 9px;
+    color: #68766f;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.allocation-summary-card strong {
+    color: #1e4735;
+    font-size: clamp(18px, 2vw, 25px);
+    overflow-wrap: anywhere;
+}
+
+.allocation-explanation {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: #68766f;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.goals-results {
+    display: grid;
+    gap: 20px;
+}
+
+.individual-goal-card {
+    min-width: 0;
+    padding: clamp(18px, 3vw, 28px);
+    background: #ffffff;
+    border: 1px solid #e4e9e5;
+    border-radius: 20px;
+    box-shadow: 0 5px 22px rgba(28, 54, 39, 0.045);
+}
+
+.goal-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.goal-number {
+    color: #648371;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+}
+
+.goal-card-header h4 {
+    margin: 7px 0 0;
+    color: #1c3027;
+    font-size: 21px;
+    overflow-wrap: anywhere;
+}
+
+.goal-status {
+    flex-shrink: 0;
+    padding: 7px 11px;
+    background: #f0f4f1;
+    border-radius: 999px;
+    color: #385b47;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.goal-target-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid #edf0ed;
+}
+
+.goal-target-row strong {
+    display: block;
+    color: #263b30;
+    font-size: 18px;
+    overflow-wrap: anywhere;
+}
+
+.goal-projection {
+    margin: 22px 0;
+    padding: 20px;
+    background: #f5f8f5;
+    border-radius: 15px;
+}
+
+.goal-projection strong {
+    display: block;
+    color: #20583d;
+    font-size: clamp(25px, 4vw, 34px);
+    letter-spacing: -0.8px;
+    overflow-wrap: anywhere;
+}
+
+.goal-projection p {
+    margin: 9px 0 0;
+    color: #68766f;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.goal-contribution-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin: 22px 0;
+}
+
+.goal-contribution-grid > div {
+    min-width: 0;
+}
+
+.goal-contribution-grid strong {
+    display: block;
+    color: #273b30;
+    font-size: 16px;
+    overflow-wrap: anywhere;
+}
+
+.goal-recommendation {
+    padding: 20px;
+    background: #f8f7f2;
+    border-left: 3px solid #8ba994;
+    border-radius: 0 14px 14px 0;
+}
+
+.goal-recommendation h5 {
+    margin: 0 0 9px;
+    color: #304b3a;
+    font-size: 14px;
+}
+
+.goal-recommendation p {
+    margin: 0;
+    color: #526158;
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.goal-details {
+    margin-top: 18px;
+    color: #526158;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.goal-details summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.goal-details p {
+    margin: 12px 0 0;
+}
+
+@media (max-width: 700px) {
+    .goal-allocation-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .goal-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .goal-contribution-grid {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .individual-goal-card {
+        padding: 18px;
+    }
+}

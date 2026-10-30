@@ -1,0 +1,15 @@
+{
+  "bundled_series": [
+    {"name": "Nifty 50 ETF", "file": "nifty50_historical.csv", "kind": "ETF closing-price history", "period": "2020-01-01 to 2025-12-31", "observations": 1486, "limitations": "Not Nifty 50 TRI; price history may omit distributions and tracking differences."},
+    {"name": "Gold ETF", "file": "goldbees_historical.csv", "kind": "ETF closing-price history", "period": "2020-01-01 to 2025-12-31", "observations": 1486, "limitations": "Not spot gold; includes ETF tracking/expense effects and does not establish 20-year history."}
+  ],
+  "unobserved_assets": "Expected returns, volatilities and correlations for assets without aligned price histories are model priors/assumptions in asset_assumptions.csv.",
+  "recommended_research_data": {
+    "equity_total_return": "NSE Indices historical Nifty TRI series",
+    "mutual_funds": "AMFI scheme NAV history; adjust for dividends/distributions where relevant",
+    "government_fixed_income": "RBI DBIE bond prices/total-return indices; do not treat yields as realised returns",
+    "small_savings": "DEA notified PPF/small-savings rates; rates are not daily market price returns",
+    "gold": "Gold ETF adjusted NAV/price or RBI reference price with documented methodology"
+  },
+  "proxy_download": "data/download_market_universe.py uses Yahoo Finance adjusted-close ETF proxies. Validate symbol, coverage, currency, corporate actions, and survivorship before analysis."
+}

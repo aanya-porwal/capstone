@@ -1,0 +1,327 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wealth AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+<div class="dashboard">
+
+    <!-- SCREEN 1: USER INPUT -->
+    <section id="inputScreen" class="screen">
+        <header class="header">
+            <h1>Wealth AI</h1>
+            <p>Build your personalized financial plan</p>
+        </header>
+
+        <div class="input-panel">
+            <h2>Your Financial Profile</h2>
+
+            <div class="input-group">
+                <label for="age">Age <span id="ageValue">25</span></label>
+                <input type="range" id="age" min="18" max="70" value="25">
+            </div>
+
+            <div class="input-group">
+                <label for="income">Monthly Income</label>
+                <input type="number" id="income" value="100000" min="0">
+            </div>
+
+            <div class="input-group">
+                <label for="expenses">Monthly Expenses</label>
+                <input type="number" id="expenses" value="50000" min="0">
+            </div>
+
+            <div class="input-group">
+                <label for="debt">Monthly Debt</label>
+                <input type="number" id="debt" value="10000" min="0">
+            </div>
+
+            <div class="input-group">
+                <label for="dependents">
+                    Dependents <span id="dependentsValue">0</span>
+                </label>
+                <input type="range" id="dependents" min="0" max="10" value="0">
+            </div>
+
+            <div class="input-group" id="dependentAgesGroup">
+                <label for="dependentAges">Dependents' Ages</label>
+                <input
+                    type="text"
+                    id="dependentAges"
+                    placeholder="e.g. 8, 14, 65"
+                >
+                <small>Enter each dependent's age separated by commas.</small>
+            </div>
+
+            <h2>Investment Details</h2>
+
+            <div class="input-group">
+                <label for="currentSavings">Current Savings</label>
+                <input type="number" id="currentSavings" value="500000" min="0">
+            </div>
+
+            <div class="input-group">
+                <label for="monthlyInvestment">Monthly Investment</label>
+                <input type="number" id="monthlyInvestment" value="30000" min="0">
+            </div>
+
+            <!-- MULTIPLE FINANCIAL GOALS -->
+            <h2>Financial Goals</h2>
+
+            <div id="goalsContainer">
+                <div class="goal-input-card" data-goal>
+                    <div class="input-group">
+                        <label for="goalName">Goal Name</label>
+                        <input
+                            type="text"
+                            id="goalName"
+                            class="goal-name"
+                            value="Primary Goal"
+                            placeholder="e.g. House"
+                            required
+                        >
+                    </div>
+
+                    <div class="input-group">
+                        <label for="goalAmount">Goal Amount (₹)</label>
+                        <input
+                            type="number"
+                            id="goalAmount"
+                            class="goal-amount"
+                            value="3000000"
+                            min="0"
+                            step="1000"
+                            required
+                        >
+                    </div>
+
+                    <div class="input-group">
+                        <label for="goalYears">
+                            Time Horizon
+                            <span id="goalYearsValue">10 years</span>
+                        </label>
+                        <input
+                            type="range"
+                            id="goalYears"
+                            class="goal-years"
+                            min="1"
+                            max="40"
+                            value="10"
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <button
+                type="button"
+                id="addGoalButton"
+                class="secondary-button"
+            >
+                + Add Another Goal
+            </button>
+
+            <!-- FIXED: COMPLETE, CLICKABLE GENERATE BUTTON -->
+            <button
+                id="generatePlan"
+                class="primary-button"
+                type="button"
+            >
+                Generate My Financial Plan →
+            </button>
+        </div>
+    </section>
+
+    <!-- SCREEN 2: FINANCIAL DASHBOARD -->
+    <section id="dashboardScreen" class="screen hidden">
+        <header class="header">
+            <div>
+                <h1>Wealth AI</h1>
+                <p>Your Personalized Financial Plan</p>
+            </div>
+            <button id="backButton" class="secondary-button" type="button">
+                ← Edit Inputs
+            </button>
+        </header>
+
+        <section class="results-panel">
+            <h2>Financial Outlook</h2>
+
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <span>Risk Score</span>
+                    <strong id="riskScore">—</strong>
+                </div>
+
+                <div class="kpi-card">
+                    <span>Risk Profile</span>
+                    <strong id="riskProfile">—</strong>
+                </div>
+
+                <div class="kpi-card">
+                    <span>Expected Return</span>
+                    <strong id="expectedReturn">—</strong>
+                </div>
+
+                <div class="kpi-card">
+                    <span>Portfolio Risk</span>
+                    <strong id="portfolioRisk">—</strong>
+                </div>
+            </div>
+
+            <!-- PROJECTED WEALTH -->
+            <div class="result-card">
+                <h3>Projected Wealth</h3>
+                <div class="big-number" id="projectedValue">—</div>
+                <p id="goalStatus">—</p>
+            </div>
+
+            <!-- PERSONALIZED GOAL PLAN -->
+            <section class="result-card goal-plan-section" id="goalPlanSection">
+                <div class="section-heading">
+                    <p class="eyebrow">YOUR NEXT STEPS</p>
+                    <h3>Your Goal-by-Goal Plan</h3>
+                    <p class="chart-description">
+                        Understand what each goal needs, how much you can allocate,
+                        and what to consider if you're falling short.
+                    </p>
+                </div>
+
+                <div id="goalAllocationSummary" class="goal-allocation-summary"></div>
+                <div id="goalsResults" class="goals-results">
+                    <p>Your personalised goal recommendations will appear here.</p>
+                </div>
+            </section>
+
+
+            <!-- WEALTH PROJECTION CHART -->
+            <div class="result-card">
+                <h3>Wealth Projection</h3>
+                <p class="chart-description">
+                    Estimated growth of your wealth over the selected time horizon.
+                </p>
+                <div id="wealthChart" class="wealth-chart">
+                    <div class="chart-placeholder">
+                        Calculating projection...
+                    </div>
+                </div>
+            </div>
+
+            <!-- RECOMMENDED PORTFOLIO -->
+            <div class="result-card">
+                <h3>Recommended Portfolio</h3>
+                <div id="portfolio">Waiting for assessment...</div>
+            </div>
+
+            <!-- PORTFOLIO HEALTH CHECK -->
+            <div class="result-card" id="portfolioHealth">
+                <h3>Portfolio Health Check</h3>
+                <p class="chart-description">
+                    Checks whether the recommended allocation meets the
+                    optimizer's risk, liquidity, lock-in, and concentration constraints.
+                </p>
+
+                <p id="portfolioHealthStatus" role="status">
+                    Portfolio diagnostics will appear after assessment.
+                </p>
+
+                <div id="portfolioHealthCards" class="kpi-grid"></div>
+            </div>
+
+            <!-- MONTE CARLO SIMULATION -->
+            <div class="result-card" id="monteCarloSection">
+                <h3>Monte Carlo Simulation</h3>
+
+                <p class="chart-description">
+                    Explore how market uncertainty could affect your financial
+                    goal using 1,000 simulated investment outcomes.
+                    These are estimates, not guaranteed future returns.
+                </p>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <span>Goal Achievement Probability</span>
+                        <strong id="monteCarloProbability">—</strong>
+                    </div>
+
+                    <div class="kpi-card">
+                        <span>Pessimistic Outcome (10th Percentile)</span>
+                        <strong id="monteCarloPessimistic">—</strong>
+                    </div>
+
+                    <div class="kpi-card">
+                        <span>Median Outcome (50th Percentile)</span>
+                        <strong id="monteCarloMedian">—</strong>
+                    </div>
+
+                    <div class="kpi-card">
+                        <span>Optimistic Outcome (90th Percentile)</span>
+                        <strong id="monteCarloOptimistic">—</strong>
+                    </div>
+                </div>
+
+                <p id="monteCarloStatus" class="chart-description" role="status">
+                    Simulation results will appear after assessment.
+                </p>
+
+                <p class="chart-description">
+                    The simulation uses the recommended portfolio's estimated
+                    return and volatility, with fixed monthly contributions
+                    and normally distributed monthly returns. Results exclude
+                    taxes, transaction fees, and inflation.
+                </p>
+            </div>
+
+            <!-- HISTORICAL MARKET ANALYSIS -->
+            <div class="result-card" id="marketAnalysis">
+                <h3>Historical Market Analysis</h3>
+
+                <p class="chart-description">
+                    Historical performance of the Nifty 50 ETF and Gold ETF.
+                    Past performance does not predict future returns.
+                </p>
+
+                <p id="marketReportStatus" role="status">
+                    Loading historical market data...
+                </p>
+
+                <div id="marketReportCards" class="kpi-grid"></div>
+
+                <h3 class="comparison-heading">
+                    Growth of ₹10,000 Investment
+                </h3>
+
+                <p class="chart-description">
+                    Compare how ₹10,000 invested in each asset would have
+                    grown over the historical period.
+                </p>
+
+                <div id="investmentGrowthChart" class="wealth-chart">
+                    <div class="chart-placeholder">
+                        Loading investment growth comparison...
+                    </div>
+                </div>
+
+                <p id="investmentGrowthStatus" class="chart-description" role="status">
+                    Loading investment growth data...
+                </p>
+
+                <p class="chart-description">
+                    Historical period:
+                    <span id="marketReportPeriod">—</span>
+                    <br>
+                    Annualized return and volatility use historical daily returns.
+                    Sharpe ratios shown here use a zero risk-free rate.
+                    Investment growth excludes taxes, fees, and dividends.
+                </p>
+            </div>
+        </section>
+    </section>
+</div>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

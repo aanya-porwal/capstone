@@ -1,0 +1,38 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.streamlit/secrets.toml
+data/raw/
+data/external/
+data/market_data/
+models/*.pkl
+models/*.joblib
+
+# Local databases and generated files
+data/*.db
+data/*.sqlite*
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store
+Thumbs.db
+
+# Local research datasets
+dwms_research_data/
+
+# Private and generated files
+data/*.db
+data/*.sqlite*
+data/cache/
+data/live_config.json
+market_data/processed/

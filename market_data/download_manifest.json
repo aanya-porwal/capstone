@@ -1,0 +1,72 @@
+{
+  "created_at_utc": "2026-10-30T15:22:16Z",
+  "requested_start": "1999-01-01",
+  "requested_end": "2026-10-30",
+  "sources": [
+    {
+      "series": "GOLDBEES.NS",
+      "category": "gold_etf_proxy",
+      "source": "Yahoo Finance chart data via yfinance",
+      "data_type": "ETF adjusted close proxy",
+      "file": "market_data\\processed\\goldbees_ns_adjusted_close.csv",
+      "observations": 4393,
+      "first_date": "2009-01-02",
+      "last_date": "2026-10-30",
+      "status": "downloaded",
+      "limitations": "Not an official Gold TRI; vendor adjustments and historical coverage should be independently checked."
+    }
+  ],
+  "failures": [
+    {
+      "series": "NIFTY 50",
+      "source": "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString",
+      "error": "NIFTY 50 1999-01-01–1999-12-26: Expecting value: line 1 column 2 (char 1)"
+    },
+    {
+      "series": "NIFTY NEXT 50",
+      "source": "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString",
+      "error": "NIFTY NEXT 50 1999-01-01–1999-12-26: Expecting value: line 1 column 2 (char 1)"
+    },
+    {
+      "series": "NIFTY MIDCAP 150",
+      "source": "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString",
+      "error": "NIFTY MIDCAP 150 1999-01-01–1999-12-26: Expecting value: line 1 column 2 (char 1)"
+    },
+    {
+      "series": "NIFTY SMALLCAP 250",
+      "source": "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString",
+      "error": "NIFTY SMALLCAP 250 1999-01-01–1999-12-26: Expecting value: line 1 column 2 (char 1)"
+    },
+    {
+      "series": "NIFTY 500",
+      "source": "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString",
+      "error": "NIFTY 500 1999-01-01–1999-12-26: Expecting value: line 1 column 2 (char 1)"
+    },
+    {
+      "series": "NIFTY 10 YR BENCHMARK G-SEC",
+      "source": "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString",
+      "error": "NIFTY 10 YR BENCHMARK G-SEC 1999-01-01–1999-12-26: Expecting value: line 1 column 2 (char 1)"
+    },
+    {
+      "series": "NIFTY 5 YR BENCHMARK G-SEC",
+      "source": "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString",
+      "error": "NIFTY 5 YR BENCHMARK G-SEC 1999-01-01–1999-12-26: Expecting value: line 1 column 2 (char 1)"
+    },
+    {
+      "series": "NIFTY AAA CORPORATE BOND",
+      "source": "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString",
+      "error": "NIFTY AAA CORPORATE BOND 1999-01-01–1999-12-26: Expecting value: line 1 column 2 (char 1)"
+    },
+    {
+      "series": "NIFTY BANKING & PSU DEBT",
+      "source": "https://www.niftyindices.com/Backpage.aspx/getTotalReturnIndexString",
+      "error": "NIFTY BANKING & PSU DEBT 1999-01-01–1999-12-26: Expecting value: line 1 column 2 (char 1)"
+    }
+  ],
+  "methodology": {
+    "nifty": "NSE Indices public TRI endpoint; TotalReturnsIndex is used (dividends reinvested). NTR retained separately.",
+    "gold": "Yahoo Finance adjusted-close proxy for GOLDBEES.NS; not an official benchmark TRI or guaranteed complete NAV history.",
+    "returns": "Compute simple/log returns from the level series; do not concatenate unrelated proxy histories without documenting the splice.",
+    "limitations": "Undocumented public endpoint and third-party market-data proxy; verify coverage and source terms before publication or production use. No synthetic backfill is created."
+  }
+}

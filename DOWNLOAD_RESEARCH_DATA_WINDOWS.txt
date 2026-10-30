@@ -1,0 +1,51 @@
+DWMS — AUTOMATED HISTORICAL DATA DOWNLOAD (WINDOWS)
+===================================================
+
+This downloads historical Nifty Total Return Index (TRI) data from the public
+NSE Indices endpoint and a GoldBeES adjusted-close proxy. It saves raw/normalised
+files separately and writes a provenance/failure manifest. No missing history
+is synthetically backfilled.
+
+1. Stop Streamlit with Ctrl+C.
+2. Open PowerShell in your existing dwms_work project folder.
+3. Activate the existing environment and install the one additional dependency:
+
+   .\.venv\Scripts\Activate.ps1
+   python -m pip install yfinance
+
+4. Run the downloader (defaults: 1999-01-01 through today's date):
+
+   python data\download_research_dataset.py
+
+5. Wait for the process to finish. It may take a few minutes depending on the
+   source response and network. Do not run it repeatedly in parallel.
+
+6. Check the result:
+
+   Get-Content data\market_data\download_manifest.json
+   Get-ChildItem data\market_data\processed
+
+Output layout:
+   data\market_data\raw\          normalised raw endpoint rows in JSON
+   data\market_data\processed\    CSV level series for modelling
+   data\market_data\download_manifest.json  source, coverage, row counts, failures
+
+Optional commands:
+   # Only selected Nifty indices
+   python data\download_research_dataset.py --indices "NIFTY 50" "NIFTY NEXT 50" "NIFTY MIDCAP 150"
+
+   # Skip the Yahoo Finance gold ETF proxy
+   python data\download_research_dataset.py --skip-gold
+
+   # Restrict the requested period
+   python data\download_research_dataset.py --start-date 2005-01-01 --end-date 2026-10-30
+
+IMPORTANT DATA NOTES
+- Nifty TRI includes reinvested dividends; do not substitute PRI/price-only data.
+- NTR is retained as a separate column and is not substituted for TRI.
+- GoldBeES adjusted close is a vendor ETF proxy, not an official gold benchmark TRI.
+- Fixed-income index names can change or be unavailable in the public endpoint.
+  Such failures are recorded in the manifest; the script does not invent data.
+- The Nifty endpoint is undocumented and may change or rate-limit requests.
+- Review each series' coverage and missing dates before using it in optimisation.
+- These downloads are research inputs, not investment recommendations.

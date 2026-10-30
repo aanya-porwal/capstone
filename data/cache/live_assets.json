@@ -1,0 +1,19 @@
+{
+  "fetched_at": "2026-10-27T10:45:01.873860+00:00",
+  "assets": {
+    "Nifty 50 ETF": {
+      "expected_return": 0.09,
+      "volatility": 0.1269865063610222,
+      "trailing_return": 0.057151520492693564,
+      "as_of": "2026-10-27",
+      "span_years": 5.0
+    },
+    "Gold ETF": {
+      "expected_return": 0.11,
+      "volatility": 0.18513491050039657,
+      "trailing_return": 0.22851585788491335,
+      "as_of": "2026-10-27",
+      "span_years": 5.0
+    }
+  }
+}

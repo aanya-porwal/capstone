@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wealth AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+<header class="top">
+    <div class="wrap">
+        <h1>Wealth AI</h1>
+        <p>Find out where to invest, how much to put in each, and what you could earn.</p>
+    </div>
+</header>
+
+<main class="wrap">
+    <section class="card" id="planner">
+        <h2><span class="step">1</span> What do you know?</h2>
+        <div class="modes" role="radiogroup" aria-label="Planning mode">
+            <label class="mode">
+                <input type="radio" name="mode" value="budget" checked>
+                <span class="mode-body">
+                    <strong>I know how much I can invest</strong>
+                    <small>We'll show where to put it and what it could grow to.</small>
+                </span>
+            </label>
+            <label class="mode">
+                <input type="radio" name="mode" value="goal">
+                <span class="mode-body">
+                    <strong>I know how much money I need</strong>
+                    <small>We'll work out how much to invest every month.</small>
+                </span>
+            </label>
+        </div>
+
+        <h2><span class="step">2</span> Your money</h2>
+        <div class="grid2">
+            <div class="field">
+                <label for="monthlyBudget" id="budgetLabel">How much can you invest every month?</label>
+                <div class="money"><span>₹</span><input type="number" id="monthlyBudget" min="0" step="500" value="30000"></div>
+            </div>
+            <div class="field">
+                <label for="currentSavings">Money you already have to invest</label>
+                <div class="money"><span>₹</span><input type="number" id="currentSavings" min="0" step="1000" value="0"></div>
+                <small>Leave at 0 if you are starting fresh.</small>
+            </div>
+        </div>
+
+        <h2><span class="step">3</span> Your goals</h2>
+        <div id="goalList"></div>
+        <button type="button" class="link" id="addGoal">+ Add another goal</button>
+
+        <h2><span class="step">4</span> How do you feel about risk?</h2>
+        <div class="field">
+            <select id="riskChoice">
+                <option value="auto">Not sure, decide for me</option>
+                <option value="Low">Play it safe: I don't want to see my money drop</option>
+                <option value="Moderate">Balanced: some ups and downs are fine</option>
+                <option value="Moderately High">Growth-leaning: I can handle dips for better returns</option>
+                <option value="High">Aggressive: I want maximum growth and can wait</option>
+            </select>
+        </div>
+
+        <div id="riskHelper" class="helper">
+            <p>A few quick questions so we can pick a comfortable level for you.</p>
+            <div class="grid3">
+                <div class="field"><label for="age">Age</label><input type="number" id="age" min="18" max="80" value="28"></div>
+                <div class="field"><label for="income">Monthly income (₹)</label><input type="number" id="income" min="0" value="100000"></div>
+                <div class="field"><label for="expenses">Monthly expenses (₹)</label><input type="number" id="expenses" min="0" value="50000"></div>
+                <div class="field"><label for="debt">Monthly loan payments (₹)</label><input type="number" id="debt" min="0" value="0"></div>
+                <div class="field"><label for="dependents">People who depend on you</label><input type="number" id="dependents" min="0" max="10" value="0"></div>
+            </div>
+        </div>
+
+        <div id="formError" class="error" role="alert" hidden></div>
+        <button type="button" class="primary" id="planBtn">Show my plan</button>
+    </section>
+
+    <section id="results" hidden>
+        <div class="card hero" id="summary"></div>
+        <div id="goalCards"></div>
+
+        <details class="card guide">
+            <summary>New to investing? Plain-English guide</summary>
+            <dl>
+                <dt>Profit</dt><dd>What your money earns on top of what you put in.</dd>
+                <dt>ETF / Mutual fund</dt><dd>A ready-made basket of investments, so you don't have to pick individual companies.</dd>
+                <dt>Lock-in</dt><dd>A period during which you cannot take your money out.</dd>
+                <dt>Why not put everything in one place?</dt><dd>Spreading money across different kinds of investments means one bad patch doesn't hurt your whole plan.</dd>
+                <dt>Why does the time matter?</dt><dd>The longer you can wait, the more risk you can take, because markets have time to recover from dips.</dd>
+            </dl>
+        </details>
+
+        <div class="card notes" id="assumptions"></div>
+    </section>
+</main>
+
+<footer class="wrap foot">
+    Wealth AI is an educational planning prototype. It uses simple rules and assumed returns. It is not licensed investment advice and returns are never guaranteed.
+</footer>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

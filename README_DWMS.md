@@ -1,0 +1,109 @@
+# DWMS — Local Personal Wealth Intelligence Prototype
+
+A local-first Streamlit prototype for conversational onboarding, financial profiling, goal planning, quantitative portfolio construction, scenario analysis and illustrative Indian tax logic.
+
+## Run on Windows 11
+
+1. Install Python 3.10 or 3.11 (64-bit).
+2. Extract the ZIP into a writable folder.
+3. Open PowerShell in that folder.
+4. Create and activate an environment:
+
+   ```powershell
+   py -3.11 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python -m pip install --upgrade pip
+   pip install -r requirements-prototype.txt
+   ```
+
+5. Start the application:
+
+   ```powershell
+   streamlit run streamlit_app.py
+   ```
+
+   Or double-click `run_dwms.bat` (it installs the small prototype requirements and launches Streamlit).
+
+6. Create a local account. Passwords are stored as PBKDF2-HMAC-SHA256 hashes with per-user random salts. Profiles, goals, recommendation snapshots and conversation messages are stored in `data/dwms_users.db`.
+
+## Optional local LLM
+
+Read `OLLAMA_SETUP.md`. The suggested `qwen2.5:3b` model runs locally via Ollama. The app uses CPU inference and works without Ollama using a deterministic fallback. No paid API key is required.
+
+## What is implemented
+
+- Local multi-user registration and login; per-user profile, recommendations and chat history in SQLite.
+- Conversational onboarding that asks one question at a time and extracts approximate answers, with a profile page for review/correction.
+- Separate risk-tolerance and risk-capacity inputs; these are user-reported planning indicators, not validated psychometric measures.
+- Career-aware profile fields (employment type, sector, experience, income growth, expense growth and EMI) with conservative/base/optimistic income trajectories.
+- Multiple simultaneous goals stored in the user profile, with distinct target/horizon/corpus/contribution fields and pro-rata funding against a shared household surplus. The full Monte Carlo remains primary-goal-only in this revision; this limitation is disclosed in-app.
+- Allocation explanation table describing each asset sleeve, its portfolio role, data quality and horizon suitability.
+- Side-by-side simplified new/old regime tax estimate for Tax Year 2026-27, with slab assumptions, standard deduction, indicative rebate and 4% cess; includes clear exclusions and regime trade-offs.
+- Goal target inflation adjustment; monthly contribution and goal horizon feed the simulation.
+- 13-instrument prototype universe spanning Indian/global equity, gold, fixed income, deposits, ELSS, PPF and NPS.
+- SLSQP constrained portfolio optimisation with risk-score/horizon-based equity and volatility caps; alternative minimum-variance and risk-parity objectives.
+- Empirical statistics for the two bundled series, transparent correlation priors for unobserved assets, Ledoit-Wolf shrinkage for the observed covariance block, and positive-semidefinite covariance repair.
+- Unsupervised K-Means market regime classification using rolling volatility, momentum and drawdown. This is descriptive regime clustering, not a validated market forecast.
+- Goal simulation. Historical moving-block bootstrap is used only when all material holdings have aligned empirical data; otherwise a Gaussian proxy simulation is explicitly labelled.
+- Tax module: old-regime 80C headroom constraint for ELSS/PPF allocation, equity STCG/LTCG estimator, tax-aware illustrative withdrawal-lot selection and drift-band rebalance suggestions.
+- Data provenance and educational reference pages.
+
+## Data inventory and limitations
+
+Bundled files:
+
+- `data/nifty50_historical.csv`: 1,486 daily observations, 2020-01-01 to 2025-12-31; closing price series labelled Nifty 50 ETF in the existing project.
+- `data/goldbees_historical.csv`: 1,486 daily observations, 2020-01-01 to 2025-12-31; GoldBees ETF closing price.
+
+These are not 20-year histories and the Nifty ETF price series is not the Nifty 50 Total Returns Index. Other asset classes do not have bundled observed price histories. Their return/volatility/correlation inputs are transparent priors/assumptions, not empirical estimates. The system must not be represented as if all 13 assets have 20-year observed data.
+
+Optional downloader (expanded ETF proxy coverage; still not official TRI/NAV data):
+
+```powershell
+python data\download_market_universe.py --years 10
+```
+
+This attempts to download free Yahoo Finance adjusted-close ETF proxies into `data/prices/`. Provider coverage and ticker availability may change. These are ETF proxies, not official index TRI or mutual fund NAV. Check `data/prices/download_manifest.json` and inspect each series before using it in research. A failed download is not replaced with fabricated values.
+
+Recommended authoritative sources for research-grade data:
+
+- NSE Indices historical data: https://www.niftyindices.com/reports/historical-data (use Nifty 50 TRI rather than price return index).
+- AMFI NAV download: https://www.amfiindia.com/net-asset-value/nav-download (mutual-fund scheme NAV; downloads may require date batching).
+- RBI DBIE: https://dbie.rbihub.in/ (government security yields, gold prices and macro data).
+- SBI deposit rates: https://sbi.bank.in/en/web/interest-rates/interest-rates/deposit-rates
+- Department of Economic Affairs small savings notifications: https://dea.gov.in/
+- NPS Trust: https://npstrust.org.in/
+
+## Quantitative methodology and caveats
+
+1. Historical observed asset return: daily price percentage changes. Historical annualised volatility uses daily sample standard deviation times square-root 252. Historical CAGR uses geometric compounding over observed trading days.
+2. Expected return: observed asset CAGR is blended 45% with the prior return 55%, then clipped to a broad planning range. This is a stabilising assumption, not a predictive estimator.
+3. Covariance: transparent class-level correlation priors are used where observations are absent. Ledoit-Wolf shrinkage is applied to the empirical block of assets with sufficient aligned history. The resulting matrix is eigenvalue-floored to ensure positive semidefiniteness. This hybrid matrix is partly model-assumed.
+4. Optimisation: SLSQP minimises a return-risk utility, minimum variance or risk-contribution dispersion subject to full investment, non-negative weights, asset caps, equity exposure and a risk ceiling. If the risk ceiling is infeasible, the fallback relaxes the volatility ceiling while retaining the equity cap; check reported volatility before interpreting output.
+5. Market regimes: K-Means with three clusters on rolling realised volatility, momentum, drawdown and gold momentum. Cluster labels are assigned by a transparent composite score. This is exploratory and in-sample; no forecasting or trading signal claim is made.
+6. Goal simulations: contributions are added monthly after each simulated return. The future goal is inflated at the user-selected annual goal inflation. A historical block bootstrap is only used if every material portfolio holding has aligned observed return history. With current bundled data the app correctly falls back to a Gaussian proxy using the model's estimated mean and volatility.
+7. Tax: the salary tax comparison is a simplified Tax Year 2026-27 illustration; it excludes surcharge, marginal relief, special-rate income, HRA and many personal eligibility checks. The capital-gains/lot modules remain narrow and illustrative. It models equity-oriented listed-security gain estimates, basic 80C headroom under old-regime assumptions, and a demonstration tax-aware lot ordering. It omits detailed slab tax, surcharge/marginal relief, all instrument-specific tax categories, STT, loss set-off, exit loads, dividend tax, actual lot-level FIFO rules, and legal transition complexities. Rebalancing is a drift-band suggestion only; it requires supplied holdings and tax lots and does not execute trades. Do not use it for filing or investment execution.
+
+## Testing
+
+Run:
+
+```powershell
+pytest -q
+```
+
+The original test suite is retained, with additional tests for covariance validity, optimisation, simulation fallback and tax calculations.
+
+## Next engineering steps
+
+1. Replace ETF proxies with official Nifty TRI, AMFI NAV and RBI data; store raw source files and download timestamps.
+2. Add monthly aligned total-return series for every investable exposure; do not infer unavailable returns from an asset label.
+3. Add walk-forward regime validation, out-of-sample optimisation, block bootstrap and backtesting with transaction costs.
+4. Add a full Indian tax rules engine reviewed against the Income-tax Act, 2025 / Rules, 2026 and current official guidance; include slab tax, surcharge, cess, loss harvesting, FIFO lots and instrument-specific rules.
+5. Extend per-goal independent portfolio optimisation and Monte Carlo; this revision supports multiple goal budgets but only simulates the legacy primary goal end-to-end.
+6. Add a proper drift-band rebalancer, trade-cost model and tax-aware sell-lot selection before claiming full tax-aware rebalancing.
+7. Add automated tests for profile parsing, user isolation, numerical edge cases and UI flows.
+
+## Safety and intended use
+
+This is an academic research and demonstration prototype. It does not provide regulated investment advice, verify suitability under SEBI requirements, connect to a broker, or execute trades. Outputs are estimates under disclosed assumptions and can be wrong. User data is stored locally in plaintext SQLite apart from password hashes; protect the device and database file.

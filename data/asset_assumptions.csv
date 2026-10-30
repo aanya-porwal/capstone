@@ -1,0 +1,14 @@
+asset,class,mu,vol,risk,liquidity,lockin,evidence
+Nifty 50 ETF,Indian equity,0.105,0.19,4,0.95,0,observed
+Nifty Next 50 ETF,Indian equity,0.115,0.23,5,0.90,0,proxy
+Nifty Midcap ETF,Indian equity,0.12,0.25,5,0.90,0,proxy
+Large Cap Fund,Indian equity,0.105,0.18,4,0.80,0,proxy
+International Equity,Global equity,0.095,0.20,4,0.90,0,proxy
+Gold ETF,Gold,0.085,0.16,3,0.95,0,observed
+Government Bond,Fixed income,0.065,0.055,2,0.80,0,assumption
+Corporate Bond,Fixed income,0.072,0.075,2,0.70,0,assumption
+Fixed Deposit,Cash/deposit,0.065,0.015,1,0.90,0,assumption
+Liquid Fund,Cash/deposit,0.055,0.008,1,0.98,0,assumption
+ELSS,Tax-advantaged equity,0.105,0.19,4,0.30,3,proxy
+PPF,Tax-advantaged fixed income,0.071,0.01,1,0.20,15,official-rate assumption
+NPS Tier I,Retirement / multi-asset,0.085,0.11,3,0.25,0,proxy
