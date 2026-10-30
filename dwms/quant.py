@@ -25,10 +25,10 @@ def load_prices():
             try:
                 d=pd.read_csv(path); datecol='Date' if 'Date' in d else 'date'; pricecol='Close' if 'Close' in d else ('close' if 'close' in d else 'NAV')
                 d[datecol]=pd.to_datetime(d[datecol]); s=pd.to_numeric(d[pricecol],errors='coerce'); s.index=d[datecol]
-                aliases={'nifty_50_etf':'Nifty 50 ETF','nifty_next_50_etf':'Nifty Next 50 ETF','nifty_midcap_etf':'Nifty Midcap ETF','gold_etf':'Gold ETF','liquid_fund_proxy':'Liquid Fund','gilt_etf_proxy':'Government Bond','s_p_500_etf_proxy':'International Equity','nifty_500_etf_proxy':'Nifty 500 ETF proxy','nifty_bank_etf_proxy':'Nifty Bank ETF proxy','bharat_bond_etf_proxy':'Bharat Bond ETF proxy'}
+                aliases={'nifty_50_etf':'Nifty 50 ETF','nifty_next_50_etf':'Nifty Next 50 ETF','nifty_midcap_etf':'Nifty Midcap ETF','gold_etf':'Gold ETF','liquid_fund_proxy':'Liquid Fund','gilt_etf_proxy':'Government Bond','s_p_500_etf_proxy':'International Equity','nifty_500_etf_proxy':'Nifty 500 ETF proxy','nifty_bank_etf_proxy':'Nifty Bank ETF proxy','bharat_bond_etf_proxy':'Bharat Bond ETF proxy','nifty_100_index_proxy':'Nifty 100 Index Proxy','nifty_200_index_proxy':'Nifty 200 Index Proxy','nifty_500_index_proxy':'Nifty 500 Index Proxy','nifty_bank_index_proxy':'Nifty Bank Index Proxy','nifty_it_index_proxy':'Nifty IT Index Proxy','nifty_pharma_index_proxy':'Nifty Pharma Index Proxy','nifty_midcap_50_index_proxy':'Nifty Midcap 50 Index Proxy','sensex_index_proxy':'Sensex Index Proxy','gold_bees_etf_price':'Gold BeES ETF Price','embassy_reit_price':'Embassy REIT Price','mindspace_reit_price':'Mindspace REIT Price','brookfield_reit_price':'Brookfield India REIT Price','nexus_select_trust_price':'Nexus Select Trust Price','indigrid_invit_price':'IndiGrid InvIT Price','irb_invit_price':'IRB InvIT Price','powergrid_invit_price':'PowerGrid InvIT Price'}
                 series[aliases.get(path.stem,path.stem)]=s.sort_index().pct_change().dropna()
             except Exception: pass
-    return pd.concat(series,axis=1,join='inner').dropna() if len(series)>1 else pd.DataFrame(series).dropna()
+    return pd.concat(series,axis=1,join='outer').sort_index() if series else pd.DataFrame()
 
 def market_features(returns):
     if returns.empty: return pd.DataFrame()
