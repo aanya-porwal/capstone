@@ -116,6 +116,7 @@ def build_shortlist(root=None, min_records=500, per_category=3, output_dir="data
     shortlist["liquidity"] = 0.75
     shortlist["lockin"] = 0
     shortlist["evidence"] = "Observed Direct Growth NAV history; forward return/volatility are provisional category placeholders, not fund estimates"
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
     shortlist["asset_assumption_class"] = shortlist["asset_class"]
     shortlist[["asset", "asset_assumption_class", "mu", "vol", "risk", "liquidity", "lockin", "evidence"]].rename(
         columns={"asset_assumption_class": "class"}
