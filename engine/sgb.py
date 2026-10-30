@@ -84,18 +84,19 @@ def sgb_instrument_table(master: pd.DataFrame, cashflows: pd.DataFrame,
 
 
 def sgb_xirr(cashflows: pd.DataFrame, initial_investment_per_gram: float,
-             valuation_date=None, terminal_value_per_gram: float = 0.0) -> float:
+             investment_date=None, valuation_date=None,
+             terminal_value_per_gram: float = 0.0) -> float:
     """Annualised money-weighted return for dated per-gram cash flows.
 
-    Initial investment is dated at the earliest payment date unless valuation_date
-    is supplied. Terminal value is added at valuation_date. Returns NaN when no
-    economically valid root is found.
+    Initial investment is dated at investment_date (recommended: original issue
+    date); if omitted, earliest cash-flow date is used. Terminal value is added
+    at valuation_date. Returns NaN when no economically valid root is found.
     """
     from scipy.optimize import brentq
     cf = normalise_sgb_cashflows(cashflows)
     if cf.empty or initial_investment_per_gram <= 0:
         return float("nan")
-    start = pd.Timestamp(valuation_date) if valuation_date is not None else cf["Payment_Date"].min()
+    start = pd.Timestamp(investment_date) if investment_date is not None else cf["Payment_Date"].min()
     flows = [(start, -float(initial_investment_per_gram))]
     flows.extend(zip(cf["Payment_Date"], cf["Amount_Per_Gram"].astype(float)))
     if terminal_value_per_gram:
