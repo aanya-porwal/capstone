@@ -83,7 +83,7 @@ def estimate_moments(returns, assets=None):
                     assets = assets.drop_duplicates('asset', keep='first').reset_index(drop=True)
             except (ValueError, OSError, pd.errors.ParserError):
                 pass
-    names=assets.asset.tolist(); mu=assets.mu.to_numpy(float); vol=assets.vol.to_numpy(float)
+    names=assets.asset.tolist(); mu=assets.mu.to_numpy(float).copy(); vol=assets.vol.to_numpy(float).copy()
     # Observed daily statistics replace prior values only for assets with enough data.
     empirical={}
     if not returns.empty:
