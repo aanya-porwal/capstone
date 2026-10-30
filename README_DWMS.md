@@ -184,3 +184,24 @@ This exports a catalogue audit, a category-based shortlist of recent Direct Grow
 ### Distribution-adjusted listed trust returns
 
 The research price-panel builder also attempts a conservative REIT/InvIT distribution adjustment using explicitly labelled dividend/distribution events from the source corporate-actions table. It writes a separate synthetic return-index proxy and records accepted, rejected and unmatched events in the manifest. It does not interpret splits, bonuses or ambiguous action amounts as cash distributions. Review each trust's diagnostics before treating the result as total return; incomplete corporate-action coverage means the series remains a proxy.
+
+
+### SGB and fixed-income research
+
+- `engine/sgb.py` joins RBI SGB tranche metadata, reported per-gram cash flows and secondary-market quote fields by ISIN. It summarises coupon and redemption cash flows separately. The cash-flow table is not assumed complete; validate against official RBI redemption notices.
+- `engine/fixed_income.py` converts a user-supplied modified duration and convexity into a local parallel-yield-shock price sensitivity. It does not treat the RBI 10-year yield series as a bond return series.
+- The Market intelligence page exposes the SGB catalogue and yield-sensitivity table when the external dataset is available.
+
+### Instrument-aware tax estimates
+
+The Tax intelligence page includes a separate instrument-level estimator for listed equity, equity mutual funds, business-trust units, gold/silver ETFs, physical metals, specified debt mutual funds, other mutual funds, bonds and SGBs. SGB coupon income is estimated separately from capital gains.
+
+For Tax Year 2026-27, the SGB maturity exemption is gated on all three conditions: original subscription by an individual, continuous holding from original issue, and redemption at maturity. Secondary-market acquisition and premature redemption do not satisfy this exemption. The estimator uses broad category assumptions and excludes surcharge, marginal relief, loss set-off, treaty effects, TDS and several instrument-specific distribution rules. Do not use it for filing.
+
+Official reference points:
+- Income-tax Department, Income-tax Act 2025 and Rules 2026: https://www.incometaxindia.gov.in/en/income-tax-act-202511
+- CBDT / Income-tax Department, Budget 2026 SGB FAQ: https://incometaxindia.gov.in/Documents/Budget2026/FAQs-Budget-2026.pdf
+- Income-tax Department capital-gains guidance: https://www.incometaxindia.gov.in/w/capital-gain
+- AMFI mutual-fund tax guidance: https://www.amfiindia.com/investor/knowledge-center-info?zoneName=TaxRegimeForMutualFunds
+
+Tax rules change and depend on instrument structure, acquisition date, listing, STT and investor status. Verify the current Act, Rules and notifications before using any estimate.
