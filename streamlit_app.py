@@ -13,6 +13,7 @@ from dwms.onboarding import STEPS,parse_step
 from dwms.tax_compare import compare_regimes
 from dwms.planning import salary_path, future_monthly_surplus, allocate_household_surplus, allocation_rationale
 from engine.advanced_risk import historical_cvar, portfolio_return_series, regime_switching_monte_carlo, walk_forward_backtest
+from engine.backtesting import walk_forward_compare
 from engine.research_data import load_sgb, load_macro
 from engine.sgb import sgb_instrument_table
 from engine.fixed_income import yield_curve_scenarios
@@ -308,17 +309,22 @@ elif page=='Risk lab':
                     st.caption(result['method']+'. Regimes are descriptive historical clusters; the within-regime distribution is an approximation.')
                 except ValueError as exc:
                     st.info(f'Regime simulation unavailable: {exc}')
+            st.subheader('Walk-forward strategy comparison')
+            cost_bps=st.slider('Assumed transaction cost (basis points per traded notional)',0,100,15,5)
             try:
-                wf=walk_forward_backtest(prices,benchmark=benchmark,lookback=252,rebalance_every=21)
+                wf=walk_forward_compare(prices,benchmark=benchmark,lookback=252,rebalance_every=21,transaction_cost_bps=float(cost_bps))
                 rows=[]
-                for label,key in [('Optimised portfolio','portfolio_metrics'),('Benchmark','benchmark_metrics')]:
-                    m=wf[key]
-                    rows.append({'Series':label,'CAGR':m['cagr'],'Volatility':m['volatility'],'Maximum drawdown':m['max_drawdown'],'Total return':m['total_return']})
-                st.subheader('Walk-forward baseline')
-                st.dataframe(pd.DataFrame(rows).style.format({k:'{:.2%}' for k in ['CAGR','Volatility','Maximum drawdown','Total return']}),hide_index=True,use_container_width=True)
-                st.caption(f"Out-of-sample window: {wf['out_of_sample_start']} to {wf['out_of_sample_end']}. Walk-forward minimum-variance baseline; no taxes, exit loads or transaction costs.")
+                for label,key in [('Optimised portfolio (net of estimated costs)','optimised'),('Equal-weight assets','equal_weight'),('Buy-and-hold benchmark','benchmark')]:
+                    m=wf['metrics'][key]
+                    rows.append({'Strategy':label,'CAGR':m['cagr'],'Volatility':m['annual_volatility'],'Sharpe (rf=0)':m['sharpe_zero_rf'],'Sortino (rf=0)':m['sortino_zero_rf'],'Maximum drawdown':m['max_drawdown'],'Calmar':m['calmar'],'Total return':m['total_return']})
+                st.dataframe(pd.DataFrame(rows).style.format({k:'{:.2f}' for k in ['Sharpe (rf=0)','Sortino (rf=0)','Calmar']}).format({k:'{:.2%}' for k in ['CAGR','Volatility','Maximum drawdown','Total return']}),hide_index=True,use_container_width=True)
+                st.metric('Average one-way turnover per rebalance',f"{wf['average_one_way_turnover']:.1%}")
+                st.caption(f"Out-of-sample: {wf['out_of_sample_start']} to {wf['out_of_sample_end']} · {wf['metrics']['optimised']['observations']:,} aligned daily observations. {wf['method']}. Costs are user assumptions; tax, slippage, exit loads and liquidity impact are not included.")
+                st.line_chart((1+wf['returns']).cumprod(),use_container_width=True)
+                with st.expander('Inspect rebalance weights'):
+                    st.dataframe(wf['rebalance_log'],hide_index=True,use_container_width=True)
             except ValueError as exc:
-                st.info(f'Walk-forward backtest unavailable: {exc}')
+                st.info(f'Walk-forward comparison unavailable: {exc}')
 
 elif page=='Tax intelligence':
     st.title('Tax planning')
