@@ -191,7 +191,7 @@ def walk_forward_backtest(
         n = len(selected)
         from scipy.optimize import minimize
         x0 = np.full(n, 1 / n)
-        bounds = [(0.0, max_weight)] * n
+        bounds = [(0.0, max(max_weight, 1.0 / n))] * n
         cons = [{"type": "eq", "fun": lambda w: w.sum() - 1}]
         result = minimize(lambda w: float(w @ cov @ w), x0, method="SLSQP",
                           bounds=bounds, constraints=cons,
