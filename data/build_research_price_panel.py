@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from engine.research_data import (
+from engine.distribution_returns import distribution_adjusted_returns\nfrom engine.research_data import (
     get_research_root, load_index, load_listed_security,
 )
 
@@ -70,11 +70,42 @@ def main():
             rows.append({"asset": name, "source": f"data/INDICES/{symbol}.parquet",
                          "status": f"not_loaded: {exc}"})
 
+    actions = None
+    try:
+        actions = load_corporate_actions(args.root)
+    except FileNotFoundError:
+        pass
+
+    trust_symbols = {"EMBASSY", "MINDSPACE", "BIRET", "NEXUSSURGL",
+                     "INDIGRID", "IRBINVIT", "PGINVIT"}
     for name, (symbol, exchange, slug) in SECURITIES.items():
         try:
-            save(name, slug, load_listed_security(symbol, exchange, args.root),
+            frame = load_listed_security(symbol, exchange, args.root)
+            save(name, slug, frame,
                  "listed security close; corporate-action/distribution adjustment unverified",
                  f"data/{exchange}/{symbol}_{'BO' if exchange == 'BSE' else 'NS'}.parquet")
+            if symbol in trust_symbols and actions is not None:
+                try:
+                    daily_returns, diag = distribution_adjusted_returns(
+                        frame, actions, symbol, date_col="Date", price_col="close"
+                    )
+                    tri = (1 + daily_returns).cumprod() * 100.0
+                    tri_frame = tri.rename("close").rename_axis("Date").reset_index()
+                    tri_frame.to_csv(outdir / f"{slug}_total_return_proxy.csv", index=False)
+                    rows.append({
+                        "asset": name, "file": str(outdir / f"{slug}_total_return_proxy.csv").replace("\\\\", "/"),
+                        "source": "listed price + corporate_actions dividend/distribution events",
+                        "source_type": "synthetic total-return proxy; only parseable cash distributions included",
+                        "observations": int(len(tri_frame)),
+                        "start_date": str(tri_frame.Date.min().date()),
+                        "end_date": str(tri_frame.Date.max().date()),
+                        "accepted_distribution_events": diag.attrs.get("accepted_events", 0),
+                        "rejected_distribution_events": diag.attrs.get("rejected_events", 0),
+                        "unmatched_ex_dates": diag.attrs.get("unmatched_ex_dates", 0),
+                    })
+                except (ValueError, KeyError) as exc:
+                    rows.append({"asset": name, "source": "corporate_actions",
+                                 "status": f"distribution_adjustment_not_applied: {exc}"})
         except (FileNotFoundError, ValueError) as exc:
             rows.append({"asset": name, "source": f"data/{exchange}/{symbol}",
                          "status": f"not_loaded: {exc}"})
