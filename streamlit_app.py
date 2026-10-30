@@ -13,6 +13,9 @@ from dwms.onboarding import STEPS,parse_step
 from dwms.tax_compare import compare_regimes
 from dwms.planning import salary_path, future_monthly_surplus, allocate_household_surplus, allocation_rationale
 from engine.advanced_risk import historical_cvar, portfolio_return_series, regime_switching_monte_carlo, walk_forward_backtest
+from engine.research_data import load_sgb, load_macro
+from engine.sgb import sgb_instrument_table
+from engine.fixed_income import yield_curve_scenarios
 
 st.set_page_config(page_title='DWMS | Personal Wealth Intelligence',page_icon='◈',layout='wide',initial_sidebar_state='expanded')
 init_db()
@@ -301,6 +304,40 @@ elif page=='Market intelligence':
     st.write('- Other assets use explicitly marked prior assumptions until actual time series are acquired.')
     st.write('- Run `python data/download_market_universe.py --years 10` to attempt free Yahoo Finance adjusted-close ETF proxies. Provider availability, survivorship and tracking differences must be documented.')
     st.write('- For research-grade long history, replace Nifty ETF prices with NSE Indices TRI; use AMFI NAV for mutual funds; RBI DBIE for G-Sec yields; official rate notifications for FD/PPF.')
+
+    st.divider()
+    st.subheader('Sovereign Gold Bonds')
+    try:
+        sgb_master=load_sgb('master')
+        sgb_cashflows=load_sgb('cashflows')
+        sgb_quotes=load_sgb('market_prices')
+        sgb_table=sgb_instrument_table(sgb_master,sgb_cashflows,sgb_quotes)
+        st.caption('Source catalogue and reported per-gram cash flows. Verify tranche ISIN, event completeness, current quote date and official redemption notices.')
+        st.metric('Tranches in source catalogue',f"{len(sgb_table):,}")
+        display_cols=[x for x in ['Tranche','Symbol','ISIN','Issue_Date','Maturity_Date','Issue_Price','Coupon_Rate_Pct','cashflow_events','coupon_cash_per_gram','redemption_cash_per_gram','Exchange','LTP','Premium_Discount_Pct','Status'] if x in sgb_table]
+        st.dataframe(sgb_table[display_cols],hide_index=True,use_container_width=True)
+    except (FileNotFoundError,ValueError,KeyError) as exc:
+        st.info(f'SGB source data unavailable: {exc}')
+
+    st.divider()
+    st.subheader('Government bond yield sensitivity')
+    try:
+        gsec=load_macro('GSEC_10Y_YIELD')
+        date_col=next((x for x in ['Date','date'] if x in gsec.columns),None)
+        yield_col=next((x for x in ['Close','close','Yield','yield'] if x in gsec.columns),None)
+        if date_col and yield_col:
+            gsec[date_col]=pd.to_datetime(gsec[date_col],errors='coerce')
+            gsec[yield_col]=pd.to_numeric(gsec[yield_col],errors='coerce')
+            gsec=gsec.dropna(subset=[date_col,yield_col]).sort_values(date_col)
+            duration=st.number_input('Illustrative modified duration (years)',min_value=0.0,max_value=30.0,value=5.0,step=0.5)
+            scenarios=yield_curve_scenarios(gsec[yield_col],duration_years=duration)
+            st.metric('Latest source 10-year yield',f"{gsec[yield_col].iloc[-1]:.2f}%")
+            st.dataframe(scenarios,hide_index=True,use_container_width=True)
+            st.caption('Duration/convexity sensitivity only. The RBI yield history is not a bond price or total-return series.')
+        else:
+            st.info('The source yield file does not expose recognised date/yield columns.')
+    except (FileNotFoundError,ValueError,KeyError) as exc:
+        st.info(f'Government yield data unavailable: {exc}')
 
 elif page=='Learn':
     st.title('Learn investing'); st.write('A small reference library that explains the building blocks behind your strategy.')
