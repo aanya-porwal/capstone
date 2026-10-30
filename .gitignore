@@ -36,3 +36,4 @@ data/*.sqlite*
 data/cache/
 data/live_config.json
 market_data/processed/
+\n# Generated external research outputs (keep source Parquet clone separate)\ndata/research_coverage.csv\ndata/research_coverage.json\ndata/prices/research_*.csv\ndata/prices/research_price_manifest.json\n
