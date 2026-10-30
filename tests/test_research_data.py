@@ -50,3 +50,16 @@ def test_reject_invalid_symbols():
 def test_return_loader_rejects_yield_and_spot_series():
     with pytest.raises(ValueError, match="Use index"):
         load_asset_return_series("gold:spot")
+
+
+
+def test_asset_price_panel_preserves_non_overlapping_history():
+    from dwms.quant import load_prices
+
+    # Existing bundled data should remain available even if optional research
+    # series have different inception dates.
+    returns = load_prices()
+    assert not returns.empty
+    assert "Nifty 50 ETF" in returns.columns
+    assert "Gold ETF" in returns.columns
+    assert returns.index.is_monotonic_increasing
