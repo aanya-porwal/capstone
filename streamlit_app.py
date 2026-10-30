@@ -209,7 +209,7 @@ elif page=='Goals & simulations':
             paths.append({'Scenario':scen.title(),'Year':list(range(years_view+1))[-1],'Monthly income at horizon':vals[-1]})
         st.dataframe(pd.DataFrame(paths).style.format({'Monthly income at horizon':'₹{:,.0f}'}),hide_index=True,use_container_width=True)
         st.line_chart(pd.DataFrame({'Conservative':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'conservative'),'Base':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'base'),'Optimistic':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'optimistic')}))
-        st.markdown('#### Independent goal-level simulations')
+        st.markdown('#### Correlated household Monte Carlo')
         base_return=float((analysis or {}).get('expected_return',0.08))
         base_vol=float((analysis or {}).get('volatility',0.12))
         try:
@@ -227,6 +227,10 @@ elif page=='Goals & simulations':
             )
             goal_results=pd.DataFrame(multi['goals'])
             if not goal_results.empty:
+                c1,c2,c3=st.columns(3)
+                c1.metric('Probability all goals succeed',f"{multi['household_success_probability']:.1%}")
+                c2.metric('Goals funded monthly',f"₹{multi['funded_total']:,.0f}")
+                c3.metric('Joint simulation paths',f"{multi['joint_simulations']:,}")
                 st.dataframe(
                     goal_results[['name','years','inflation_adjusted_target','funded_monthly','annual_return_assumption','volatility_assumption','goal_probability','p10','median','p90','status']].style.format({
                         'inflation_adjusted_target':'₹{:,.0f}','funded_monthly':'₹{:,.0f}',
@@ -235,20 +239,20 @@ elif page=='Goals & simulations':
                     }),
                     hide_index=True,use_container_width=True
                 )
-                st.caption(f"Shared budget funded: ₹{multi['funded_total']:,.0f} / ₹{multi['monthly_budget']:,.0f}. Each goal uses its own horizon, inflation-adjusted target and Monte Carlo paths.")
+                st.caption(f"Shared budget funded: ₹{multi['funded_total']:,.0f} / ₹{multi['monthly_budget']:,.0f}. {multi['joint_simulation_method']}.")
                 st.info(multi['simulation_interpretation'])
+                with st.expander('Inspect goal-specific allocations'):
+                    for goal_row in multi['goals']:
+                        st.markdown(f"**{goal_row['name']}** · risk score {goal_row['risk_score']}/100")
+                        if goal_row['portfolio_allocation']:
+                            st.dataframe(pd.DataFrame(goal_row['portfolio_allocation'])[['asset','weight','monthly_amount','evidence']].style.format({'weight':'{:.1%}','monthly_amount':'₹{:,.0f}'}),hide_index=True,use_container_width=True)
+                        else:
+                            st.caption('Allocation unavailable; no usable price panel.')
             else:
-                st.info('Add at least one goal to run independent goal simulations.')
+                st.info('Add at least one goal to run household simulations.')
+            st.caption(f"{multi['portfolio_method']}. Goal allocations use horizon-adjusted constraints. Return and volatility estimates blend observed data with priors; they are not guaranteed outcomes.")
         except (ValueError, KeyError, TypeError) as exc:
             st.warning(f'Goal simulation needs input review: {exc}')
-        st.caption(f"{multi['portfolio_method']}. Each goal receives horizon-adjusted risk constraints and its own allocation. Return and volatility are estimates from observed data blended with priors; they are not guaranteed outcomes.")
-            with st.expander('Inspect goal-specific allocations'):
-                for goal_row in multi['goals']:
-                    st.markdown(f"**{goal_row['name']}** · risk score {goal_row['risk_score']}/100")
-                    if goal_row['portfolio_allocation']:
-                        st.dataframe(pd.DataFrame(goal_row['portfolio_allocation'])[['asset','weight','monthly_amount','evidence']].style.format({'weight':'{:.1%}','monthly_amount':'₹{:,.0f}'}),hide_index=True,use_container_width=True)
-                    else:
-                        st.caption('Allocation unavailable; no usable price panel.')
 
 
 elif page=='Risk lab':
