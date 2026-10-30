@@ -17,7 +17,7 @@ from engine.goals import future_value, required_monthly_investment
 def _joint_market_paths(portfolios, returns, simulations, max_months, seed):
     """Create common monthly asset shocks for every goal portfolio."""
     rng = np.random.default_rng(seed)
-    available = [p for p in portfolios if p is not None]
+    available = [p for p in portfolios if isinstance(p, dict)]
     if available:
         moments = available[0]["moments"]
         assets = moments["assets"]["asset"].tolist()
