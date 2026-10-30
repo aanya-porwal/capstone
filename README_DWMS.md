@@ -107,3 +107,44 @@ The original test suite is retained, with additional tests for covariance validi
 ## Safety and intended use
 
 This is an academic research and demonstration prototype. It does not provide regulated investment advice, verify suitability under SEBI requirements, connect to a broker, or execute trades. Outputs are estimates under disclosed assumptions and can be wrong. User data is stored locally in plaintext SQLite apart from password hashes; protect the device and database file.
+
+## External research dataset integration
+
+The DWMS research loaders can read the separately cloned dataset repository:
+
+- Repository: https://github.com/aswinv90/indian-market-historical-data
+- Local folder expected by default: `../dwms_research_data` (sibling of this project folder).
+- Override with `DWMS_RESEARCH_DATA_DIR` if the clone is elsewhere.
+- Source licence: non-commercial, personal and educational research only. Commercial use requires prior written permission from the dataset author. Review the source repository `LICENSE` before redistributing any data.
+
+### Windows PowerShell
+
+```powershell
+$env:DWMS_RESEARCH_DATA_DIR = "C:\Users\aanya\Downloads\DWMS_local_prototype\dwms_research_data"
+python data\build_research_manifest.py
+```
+
+### Available loaders
+
+- `load_index("NIFTY_50")`, `load_index("NIFTY_500")` and other index files.
+- `load_listed_security("GOLDBEES", "BSE")` and other listed securities.
+- `load_gold_etf_prices()` for listed gold ETF price proxies available in the source tree.
+- `load_reit_invit_prices()` for listed REIT/InvIT unit price histories available in the source tree.
+- `load_commodity("GOLD")` and `load_commodity("SILVER")` for bullion reference prices.
+- `load_mutual_fund_catalog()` and `load_mutual_fund_nav(scheme_code)` for scheme metadata and NAV history.
+- `load_sgb("master" | "cashflows" | "market_prices")` for SGB reference data.
+- `load_macro("CPI" | "FX" | "GSEC_10Y_YIELD" | "RBI_POLICY")` for macro and rates context.
+- `load_corporate_actions()` for listed-equity corporate actions.
+
+`data/build_research_manifest.py` writes a local coverage report to `data/research_coverage.csv` and metadata to `data/research_coverage.json`. These generated files are local outputs and should not be committed unless intentionally curated.
+
+### Return-series safeguards
+
+- Index files are not assumed to be total-return indices (TRI).
+- Gold/silver bullion prices are not ETF returns.
+- Listed REIT/InvIT unit prices exclude cash distributions until those events are explicitly incorporated.
+- A 10-year government bond yield series is not a government-bond return series.
+- Mutual-fund NAVs must be classified by scheme, plan (Direct/Regular), option (Growth/IDCW), merger history and inception date before portfolio use.
+- The source repository is useful for research coverage but its own licence restricts commercial use; do not redistribute its raw files or use them in a commercial deployment without permission.
+
+The integration loaders expose source observations and provenance. They do not silently turn proxies into investible total-return histories. Optimiser eligibility must be granted only after data-quality and return-methodology checks.
