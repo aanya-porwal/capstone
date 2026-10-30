@@ -85,6 +85,7 @@ def build_shortlist(root=None, min_records=500, per_category=3, output_dir="data
     # Keep all rows for audit; shortlist only mature, current, Direct Growth candidates.
     eligible = meta[
         meta["records"].ge(min_records)
+        & meta["age_years"].ge(min_history_years)
         & meta["is_recent"]
         & meta["plan"].eq("Direct")
         & meta["option"].eq("Growth")
