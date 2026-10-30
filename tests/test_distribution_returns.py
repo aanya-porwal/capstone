@@ -43,3 +43,17 @@ def test_numeric_cash_amount_parser_rejects_ratios():
     from engine.distribution_returns import _cash_amount
     assert _cash_amount("Rs. 1.50 per share") == 1.50
     assert pd.isna(_cash_amount("1:2"))
+
+def test_distribution_on_non_trading_ex_date_maps_to_next_session():
+    prices = pd.DataFrame({
+        "Date": pd.to_datetime(["2024-01-05", "2024-01-08"]),
+        "close": [100.0, 98.0],
+    })
+    actions = pd.DataFrame({
+        "Ex_Date": ["2024-01-06"], "Symbol": ["EMBASSY"],
+        "Action_Type": ["Distribution"], "Ratio_or_Amount": ["2.00"],
+    })
+    returns, diagnostics = distribution_adjusted_returns(prices, actions, "EMBASSY")
+    assert returns.iloc[0] == pytest.approx(0.0)
+    assert diagnostics.attrs["unmatched_ex_dates"] == 0
+
