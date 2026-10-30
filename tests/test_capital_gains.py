@@ -31,3 +31,13 @@ def test_sgb_maturity_exemption_requires_all_conditions():
 def test_sgb_coupon_separate_from_capital_gain():
     out = sgb_coupon_tax(1000, 0.30)
     assert out["estimated_tax"] == pytest.approx(312)
+
+
+def test_section_50aa_depends_on_acquisition_date():
+    with pytest.raises(ValueError):
+        estimate_capital_gains("debt_mutual_fund_50aa", 10000, 36)
+    post = estimate_capital_gains("debt_mutual_fund_50aa", 10000, 36, acquisition_date="2024-01-01")
+    pre = estimate_capital_gains("debt_mutual_fund_50aa", 10000, 36, acquisition_date="2022-01-01")
+    assert post["classification"] == "STCG"
+    assert pre["classification"] == "LTCG"
+    assert pre["applied_rate"] == 0.125
