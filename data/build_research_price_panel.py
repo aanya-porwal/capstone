@@ -12,7 +12,7 @@ from pathlib import Path
 import pandas as pd
 
 from engine.distribution_returns import distribution_adjusted_returns\nfrom engine.research_data import (
-    get_research_root, load_index, load_listed_security,
+    get_research_root, load_index, load_listed_security, load_corporate_actions,
 )
 
 INDEXES = {
