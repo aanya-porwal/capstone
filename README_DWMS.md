@@ -39,7 +39,8 @@ The Streamlit prototype stores profiles, goals and chat history in a local SQLit
 - Black-Litterman reverse optimisation, Bayesian posterior expected returns from explicit views and confidence levels, and long-only mean-variance allocation with optional turnover penalty.
 - Student-t GARCH(1,1) maximum-likelihood estimation, volatility forecasts and parametric VaR/CVaR.
 - K-Means descriptive regime clustering and Markov regime-switching Monte Carlo.
-- Historical VaR/CVaR and walk-forward minimum-variance baseline backtesting.
+- Historical VaR/CVaR and walk-forward minimum-variance, equal-weight and benchmark comparison with configurable transaction-cost assumptions, turnover, CAGR, Sharpe, Sortino, drawdown and Calmar metrics.
+- Financial-data quality diagnostics for invalid dates/values, non-positive prices, duplicate dates, ordering and availability timestamps; a conservative point-in-time filter excludes unknown or not-yet-published observations.
 - Leakage-controlled walk-forward ML return forecasting using lagged/momentum/volatility features, Ridge and histogram gradient boosting, compared with a historical-mean baseline.
 
 ### Instruments and research data
@@ -115,6 +116,25 @@ Generated research panels and manifests are local outputs and are ignored by Git
 ## Tax and regulatory limitations
 
 Tax modules are educational estimates, not a filing engine. Instrument classification, acquisition dates, STT conditions, holding periods, exemptions, losses, surcharge, marginal relief, exit loads, TDS and individual circumstances can change results. Verify all rates and rules against the applicable official Act, Rules and notifications before relying on an estimate. The system does not assess SEBI suitability, provide regulated advice, connect to a broker or execute trades.
+
+## Research validation and application walkthrough
+
+### Walk-forward strategy comparison
+
+The Risk lab compares a trailing-window Ledoit-Wolf minimum-variance portfolio against an equal-weight portfolio of eligible assets and a buy-and-hold benchmark. It reports out-of-sample CAGR, annualised volatility, zero-risk-free Sharpe/Sortino, maximum drawdown, Calmar ratio and turnover. A user-configurable transaction-cost assumption is charged on one-way turnover at rebalance dates, including initial deployment. This is a research comparison, not a claim of alpha: the current prototype does not yet model taxes, bid-ask spread, market impact, exit loads, liquidity constraints or asset-specific trading calendars.
+
+### Data quality and point-in-time controls
+
+The Market intelligence page runs structural diagnostics on the bundled ETF price files. `engine.data_quality.audit_price_frame` can audit arbitrary price/NAV tables, and `point_in_time_filter` filters event/fundamental observations by their actual availability timestamp. Unknown availability timestamps are excluded. These utilities do not establish source accuracy, corporate-action completeness, survivorship-bias control or investibility. Add availability timestamps at ingestion for any future fundamental or macro event feature; do not infer them from period-end dates.
+
+### Suggested end-to-end demo
+
+1. Create a local account and complete My financial profile.
+2. Open Portfolio strategy; compare balanced utility, minimum variance and risk parity and inspect evidence and solver diagnostics.
+3. Open Goals & simulations; review the goal target and contribution assumptions.
+4. Open Risk lab; select empirical assets and benchmark, set transaction costs, and compare the walk-forward optimiser, equal-weight portfolio and benchmark.
+5. Open Market intelligence; inspect coverage, regime features, bundled data-quality diagnostics and limitations.
+6. Open Tax intelligence; treat all estimates as illustrative and inspect the tax assumptions before interpreting outputs.
 
 ## Validation status and next work
 
