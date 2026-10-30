@@ -41,3 +41,14 @@ def test_yield_scenarios_do_not_claim_bond_return():
     out = yield_curve_scenarios(pd.Series([6.5, 6.7]), duration_years=4)
     assert out.loc[out.shock_bps.eq(100), "approx_price_change_pct"].iloc[0] == pytest.approx(-4.0)
     assert "not bond total return" in out.iloc[0]["warning"]
+
+
+def test_sgb_xirr_uses_separate_investment_and_maturity_dates():
+    from engine.sgb import sgb_xirr
+    cf = pd.DataFrame({
+        "ISIN": ["IN1"], "Payment_Date": ["2025-01-01"],
+        "Payment_Type": ["Redemption"], "Amount_Per_Gram": [110.0],
+    })
+    rate = sgb_xirr(cf, 100.0, investment_date="2024-01-01",
+                    valuation_date="2025-01-01")
+    assert rate == pytest.approx(0.10, rel=1e-3)
