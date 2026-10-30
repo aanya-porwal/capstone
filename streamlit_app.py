@@ -14,6 +14,7 @@ from dwms.tax_compare import compare_regimes
 from dwms.planning import salary_path, future_monthly_surplus, allocate_household_surplus, allocation_rationale
 from engine.advanced_risk import historical_cvar, portfolio_return_series, regime_switching_monte_carlo, walk_forward_backtest
 from engine.backtesting import walk_forward_compare
+from engine.data_quality import audit_price_frame
 from engine.research_data import load_sgb, load_macro
 from engine.sgb import sgb_instrument_table
 from engine.fixed_income import yield_curve_scenarios
@@ -413,6 +414,20 @@ elif page=='Market intelligence':
     if not prices.empty:
         st.line_chart((1+prices).cumprod(),height=280)
         st.dataframe(pd.DataFrame([{'Series':c,'Observations':prices[c].count(),'Start':str(prices[c].dropna().index.min().date()),'End':str(prices[c].dropna().index.max().date()),'Evidence':'Historical ETF price series' if c in ['Nifty 50 ETF','Gold ETF'] else 'Downloaded proxy; see manifest'} for c in prices.columns]),hide_index=True,use_container_width=True)
+    with st.expander('Run bundled price-data quality checks',expanded=True):
+        audit_rows=[]
+        for label,filename in [('Nifty 50 ETF','nifty50_historical.csv'),('Gold ETF','goldbees_historical.csv')]:
+            try:
+                raw=pd.read_csv(ROOT/'data'/filename)
+                audit=audit_price_frame(raw,date_col='Date',value_col='close')
+                audit_rows.append({'Series':label,**{k:audit[k] for k in ['rows','invalid_dates','invalid_numeric_values','non_positive_values','duplicate_date_rows','out_of_order_steps','passes_basic_checks']}})
+            except (OSError,ValueError,KeyError) as exc:
+                audit_rows.append({'Series':label,'audit_error':str(exc)})
+        st.dataframe(pd.DataFrame(audit_rows),hide_index=True,use_container_width=True)
+        st.caption('These checks detect structural defects; they do not certify adjusted prices, total-return completeness, survivorship-bias control or source accuracy.')
+    with st.expander('Point-in-time research policy'):
+        st.write('For event-driven or fundamental research, features must be joined using their publication/availability timestamp, not only the economic observation date. Records with unknown availability timestamps are excluded by the research utility.')
+        st.code('from engine.data_quality import point_in_time_filter\nknown_at_decision = point_in_time_filter(events, as_of="2024-03-31", available_at_col="available_at")',language='python')
     if regime.get('latest'): st.write('Latest regime features'); st.json(regime['latest'])
     st.markdown('#### Data limitations')
     st.write('- Bundled Nifty 50 ETF and Gold ETF data: 2020–2025, 1,486 observations each. These are ETF price histories, not a 20-year Nifty TRI dataset.')
