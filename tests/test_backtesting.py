@@ -26,6 +26,10 @@ def test_walk_forward_compare_reports_three_strategies_and_costs():
     assert result["transaction_cost_bps"] == 15
     assert result["average_one_way_turnover"] >= 0
     assert result["equal_weight_average_one_way_turnover"] >= 0
+    assert result["equal_weight_cumulative_one_way_turnover"] == pytest.approx(1.0)
+    assert result["equal_weight_average_one_way_turnover"] == pytest.approx(
+        1.0 / len(result["rebalance_log"])
+    )
     assert {"one_way_turnover", "date"}.issubset(result["rebalance_log"].columns)
 
 
