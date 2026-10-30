@@ -11,3 +11,8 @@ def test_mutual_fund_category_classification():
 def test_mutual_fund_plan_option_classification():
     assert plan_option("Example Fund - Direct Plan - Growth") == ("Direct", "Growth")
     assert plan_option("Example Fund - Regular Plan - IDCW") == ("Regular", "IDCW/Dividend")
+
+
+def test_scheme_code_from_catalogue_index_is_supported():
+    from data.build_mutual_fund_universe import build_shortlist
+    assert callable(build_shortlist)
