@@ -136,7 +136,7 @@ python data\build_research_manifest.py
 - `load_macro("CPI" | "FX" | "GSEC_10Y_YIELD" | "RBI_POLICY")` for macro and rates context.
 - `load_corporate_actions()` for listed-equity corporate actions.
 
-`data/build_research_manifest.py` writes a local coverage report to `data/research_coverage.csv` and metadata to `data/research_coverage.json`. These generated files are local outputs and should not be committed unless intentionally curated.
+`data/build_research_manifest.py` writes a local coverage report to `data/research_coverage.csv` and metadata to `data/research_coverage.json`. These generated files are local outputs and should not be committed unless intentionally curated. The price-panel builder exports only selected derived CSV series into `data/prices/`; raw Parquet data stays in the external clone. The quantitative engine reads these files with sparse date alignment, so one asset’s shorter history does not truncate every other asset. New series remain price-return proxies until their TRI, corporate-action and distribution treatment is verified.
 
 ### Return-series safeguards
 
