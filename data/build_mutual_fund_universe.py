@@ -59,8 +59,10 @@ def build_shortlist(root=None, min_records=500, per_category=3, output_dir="data
     if missing:
         raise ValueError(f"MF catalogue missing expected columns: {sorted(missing)}")
     meta["records"] = pd.to_numeric(meta["records"], errors="coerce").fillna(0).astype(int)
-    meta["latestDate"] = pd.to_datetime(meta["latestDate"], errors="coerce")
-    meta["oldestDate"] = pd.to_datetime(meta["oldestDate"], errors="coerce")
+    # The source catalogue uses day-first date strings (DD-MM-YYYY).
+    # Set this explicitly so ambiguous dates are not silently read month-first.
+    meta["latestDate"] = pd.to_datetime(meta["latestDate"], errors="coerce", dayfirst=True)
+    meta["oldestDate"] = pd.to_datetime(meta["oldestDate"], errors="coerce", dayfirst=True)
     # The source README documents schemeCode as the Parquet index; tolerate
     # either an explicit column or that documented index representation.
     if "schemeCode" in meta.columns:
