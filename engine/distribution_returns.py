@@ -54,7 +54,15 @@ def distribution_adjusted_returns(prices, corporate_actions, symbol,
 
     accepted = actions[actions["included"]].groupby("Ex_Date")["cash_per_unit"].sum()
     daily = p.set_index(date_col)[price_col].rename("close").to_frame()
-    daily["cash_distribution"] = accepted.reindex(daily.index).fillna(0.0)
+    # Ex-dates may fall on exchange holidays or non-trading days. Attribute
+    # cash to the first available trading session on or after the ex-date.
+    cash_by_session = pd.Series(0.0, index=daily.index, name="cash_distribution")
+    for ex_date, amount in accepted.items():
+        session_pos = daily.index.searchsorted(ex_date, side="left")
+        if session_pos < len(daily.index):
+            session = daily.index[session_pos]
+            cash_by_session.loc[session] += float(amount)
+    daily["cash_distribution"] = cash_by_session
     daily["previous_close"] = daily["close"].shift(1)
     daily["total_return"] = (
         (daily["close"] + daily["cash_distribution"]) / daily["previous_close"] - 1
