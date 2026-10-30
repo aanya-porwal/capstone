@@ -130,21 +130,32 @@ def load_mutual_fund_catalog(root: str | Path | None = None) -> pd.DataFrame:
 
 
 def load_mutual_fund_nav(scheme_code: int, root: str | Path | None = None) -> pd.DataFrame:
-    """Load one scheme's NAV from its hash partition (schemeCode modulo 10)."""
+    """Find one scheme across NAV partitions; partition assignment is not assumed."""
     code = int(scheme_code)
     if code <= 0:
         raise ValueError("scheme_code must be a positive integer")
-    part = code % 10
-    df = read_table(f"data/MF/nav_part_{part}.parquet", root)
-    if "schemeCode" not in df or "date" not in df or "nav" not in df:
-        raise ValueError("Unexpected MF NAV partition schema")
-    out = df.loc[df["schemeCode"].astype("int64").eq(code), ["date", "schemeCode", "nav"]].copy()
+    base = get_research_root(root)
+    matches = []
+    for part in range(10):
+        p = base / f"data/MF/nav_part_{part}.parquet"
+        if not p.is_file():
+            continue
+        try:
+            frame = pd.read_parquet(p, columns=["date", "schemeCode", "nav"],
+                                    filters=[("schemeCode", "==", code)])
+        except (ValueError, KeyError, OSError):
+            frame = pd.read_parquet(p, columns=["date", "schemeCode", "nav"])
+            frame = frame.loc[frame["schemeCode"].astype("int64").eq(code)]
+        if not frame.empty:
+            matches.append(frame)
+    if not matches:
+        return pd.DataFrame(columns=["date", "schemeCode", "nav"])
+    out = pd.concat(matches, ignore_index=True)
     out["date"] = pd.to_datetime(out["date"], errors="coerce")
     out["nav"] = pd.to_numeric(out["nav"], errors="coerce")
     out = out.dropna(subset=["date", "nav"])
     out = out[out["nav"].gt(0)].sort_values("date").drop_duplicates("date", keep="last")
     return out.reset_index(drop=True)
-
 
 def load_corporate_actions(root: str | Path | None = None) -> pd.DataFrame:
     return read_table("data/CORPORATE_ACTIONS/corporate_actions.parquet", root)
