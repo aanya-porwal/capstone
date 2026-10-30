@@ -130,27 +130,19 @@ def load_mutual_fund_catalog(root: str | Path | None = None) -> pd.DataFrame:
 
 
 def load_mutual_fund_nav(scheme_code: int, root: str | Path | None = None) -> pd.DataFrame:
-    """Find one scheme across NAV partitions; partition assignment is not assumed."""
+    """Load one scheme from its documented schemeCode modulo-10 NAV partition."""
     code = int(scheme_code)
     if code <= 0:
         raise ValueError("scheme_code must be a positive integer")
-    base = get_research_root(root)
-    matches = []
-    for part in range(10):
-        p = base / f"data/MF/nav_part_{part}.parquet"
-        if not p.is_file():
-            continue
-        try:
-            frame = pd.read_parquet(p, columns=["date", "schemeCode", "nav"],
-                                    filters=[("schemeCode", "==", code)])
-        except (ValueError, KeyError, OSError):
-            frame = pd.read_parquet(p, columns=["date", "schemeCode", "nav"])
-            frame = frame.loc[frame["schemeCode"].astype("int64").eq(code)]
-        if not frame.empty:
-            matches.append(frame)
-    if not matches:
-        return pd.DataFrame(columns=["date", "schemeCode", "nav"])
-    out = pd.concat(matches, ignore_index=True)
+    part = code % 10
+    p = _path(root, f"data/MF/nav_part_{part}.parquet")
+    try:
+        df = pd.read_parquet(p, columns=["date", "schemeCode", "nav"],
+                             filters=[("schemeCode", "==", code)])
+    except (ValueError, TypeError):
+        df = pd.read_parquet(p, columns=["date", "schemeCode", "nav"])
+        df = df.loc[df["schemeCode"].astype("int64").eq(code)]
+    out = df.copy()
     out["date"] = pd.to_datetime(out["date"], errors="coerce")
     out["nav"] = pd.to_numeric(out["nav"], errors="coerce")
     out = out.dropna(subset=["date", "nav"])
