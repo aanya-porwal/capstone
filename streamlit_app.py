@@ -16,6 +16,7 @@ from engine.advanced_risk import historical_cvar, portfolio_return_series, regim
 from engine.research_data import load_sgb, load_macro
 from engine.sgb import sgb_instrument_table
 from engine.fixed_income import yield_curve_scenarios
+from dwms.capital_gains import estimate_capital_gains, sgb_coupon_tax
 
 st.set_page_config(page_title='DWMS | Personal Wealth Intelligence',page_icon='◈',layout='wide',initial_sidebar_state='expanded')
 init_db()
@@ -291,6 +292,56 @@ elif page=='Tax intelligence':
     gain=st.number_input('Realised listed-equity gain (₹)',0,100000000,100000,step=5000); holding=st.number_input('Holding period (months)',1,600,18)
     t=equity_gain_tax(gain,holding); c1,c2=st.columns(2); c1.metric('Estimated tax',f"₹{t['estimated_tax']:,.0f}"); c2.metric('After-tax gain',f"₹{gain-t['estimated_tax']:,.0f}")
     st.caption('Capital-gains module is separate from the salary-regime comparison and remains simplified. It does not model every asset type, loss set-off, surcharge, STT, exit load or individual tax circumstances.')
+
+    st.divider()
+    st.subheader('Instrument-specific capital-gains estimator')
+    st.caption('A separate estimate from salary-regime comparison. Choose the closest instrument classification and verify it against the applicable tax year.')
+    tax_asset=st.selectbox('Investment type',[
+        'listed_equity','equity_mutual_fund','business_trust_unit','gold_etf',
+        'silver_etf','listed_gsec','physical_gold','physical_silver',
+        'debt_mutual_fund_50aa','other_mutual_fund','unlisted_bond','sgb_secondary_sale'
+    ],format_func=lambda x:{
+        'listed_equity':'Listed equity shares','equity_mutual_fund':'Equity-oriented mutual fund',
+        'business_trust_unit':'Listed REIT / InvIT unit','gold_etf':'Gold ETF',
+        'silver_etf':'Silver ETF','listed_gsec':'Listed government security',
+        'physical_gold':'Physical gold','physical_silver':'Physical silver',
+        'debt_mutual_fund_50aa':'Specified debt mutual fund (Section 50AA)',
+        'other_mutual_fund':'Other mutual fund','unlisted_bond':'Unlisted bond',
+        'sgb_secondary_sale':'Sovereign Gold Bond'
+    }[x])
+    gain=st.number_input('Realised capital gain (₹)',min_value=0.0,value=50000.0,step=5000.0)
+    holding=st.number_input('Holding period (months)',min_value=0,max_value=600,value=18,step=1)
+    slab=st.selectbox('Estimated marginal slab rate', [0.05,0.10,0.15,0.20,0.25,0.30],index=5,format_func=lambda x:f'{x:.0%}')
+    stt=st.checkbox('Section 112A STT conditions satisfied',value=True)
+    sgb_original=False
+    sgb_continuous=False
+    sgb_maturity=False
+    if tax_asset=='sgb_secondary_sale':
+        sgb_original=st.checkbox('Subscribed at original RBI issue',value=False)
+        sgb_continuous=st.checkbox('Held continuously from original issue to maturity',value=False)
+        sgb_maturity=st.checkbox('Redemption is at maturity (not secondary sale or premature exit)',value=False)
+    if st.button('Estimate capital-gains tax'):
+        try:
+            estimate=estimate_capital_gains(
+                tax_asset,gain,holding,slab,stt_eligible=stt,
+                sgb_original_subscriber=sgb_original,
+                sgb_held_continuously_to_maturity=sgb_continuous,
+                sgb_redemption_at_maturity=sgb_maturity
+            )
+            a,b,c1=st.columns(3)
+            a.metric('Classification',estimate['classification'])
+            b.metric('Tax before cess',f"₹{estimate.get('tax_before_cess',0):,.0f}")
+            c1.metric('Estimated tax incl. cess',f"₹{estimate['estimated_tax']:,.0f}")
+            st.caption(estimate['rule_basis'])
+            st.warning(estimate['warning'])
+        except ValueError as exc:
+            st.error(str(exc))
+    st.subheader('SGB coupon interest')
+    coupon=st.number_input('Annual SGB coupon income (₹)',min_value=0.0,value=0.0,step=500.0)
+    if st.button('Estimate SGB coupon tax'):
+        coupon_result=sgb_coupon_tax(coupon,slab)
+        st.metric('Estimated coupon tax including cess',f"₹{coupon_result['estimated_tax']:,.0f}")
+        st.caption(coupon_result['warning'])
 
 elif page=='Market intelligence':
     st.title('Market intelligence'); st.write('Market regime detection and data provenance.')
