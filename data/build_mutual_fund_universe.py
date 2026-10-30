@@ -61,12 +61,17 @@ def build_shortlist(root=None, min_records=500, per_category=3):
     meta["records"] = pd.to_numeric(meta["records"], errors="coerce").fillna(0).astype(int)
     meta["latestDate"] = pd.to_datetime(meta["latestDate"], errors="coerce")
     meta["oldestDate"] = pd.to_datetime(meta["oldestDate"], errors="coerce")
-    meta["scheme_code"] = pd.to_numeric(meta.get("schemeCode", meta.get("scheme_code")), errors="coerce")
-    if "scheme_code" not in meta or meta["scheme_code"].isna().all():
-        # The current source schema uses schemeName and ISIN metadata but may not
-        # carry schemeCode. Resolve codes from NAV partitions in a separate step.
-        raise ValueError("Catalogue has no schemeCode column; update source adapter before NAV export.")
-    meta["scheme_code"] = meta["scheme_code"].astype("Int64")
+    # The source README documents schemeCode as the Parquet index; tolerate
+    # either an explicit column or that documented index representation.
+    if "schemeCode" in meta.columns:
+        codes = meta["schemeCode"]
+    elif "scheme_code" in meta.columns:
+        codes = meta["scheme_code"]
+    else:
+        codes = pd.Series(meta.index, index=meta.index)
+    meta["scheme_code"] = pd.to_numeric(codes, errors="coerce").astype("Int64")
+    if meta["scheme_code"].isna().all():
+        raise ValueError("Could not resolve schemeCode from catalogue column or index.")
     meta["research_category"] = meta.apply(classify_category, axis=1)
     plan_opts = meta["schemeName"].map(plan_option)
     meta["plan"] = [x[0] for x in plan_opts]
