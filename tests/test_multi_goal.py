@@ -11,13 +11,13 @@ def test_multi_goal_budget_is_never_double_counted():
             {"name": "Education", "target_today": 2000000, "years": 5,
              "monthly_contribution": 20000, "current_corpus": 100000},
         ],
-        monthly_budget=40000,
-        simulations=100,
+        monthly_budget=40000, simulations=100,
     )
     assert result["requested_total"] == 50000
     assert result["funded_total"] == pytest.approx(40000)
     assert sum(g["funded_monthly"] for g in result["goals"]) <= 40000
     assert result["contribution_scale"] == pytest.approx(0.8)
+    assert 0 <= result["household_success_probability"] <= 1
 
 
 def test_each_goal_gets_its_own_horizon_and_inflation_target():
@@ -28,15 +28,16 @@ def test_each_goal_gets_its_own_horizon_and_inflation_target():
             {"name": "Long term", "target_today": 100000, "years": 10,
              "monthly_contribution": 1000, "inflation": 0.05},
         ],
-        monthly_budget=5000,
-        simulations=100,
+        monthly_budget=5000, simulations=100,
     )
     near, long = result["goals"]
     assert near["inflation_adjusted_target"] < long["inflation_adjusted_target"]
-    assert near["years"] == 2
-    assert long["years"] == 10
+    assert near["years"] == 2 and long["years"] == 10
     assert 0 <= near["goal_probability"] <= 1
     assert 0 <= long["goal_probability"] <= 1
+    assert result["household_success_probability"] <= min(
+        near["goal_probability"], long["goal_probability"]
+    ) + 1e-12
 
 
 def test_rejects_invalid_goal_and_budget():
@@ -50,8 +51,7 @@ def test_zero_requested_contributions_are_safe():
     result = evaluate_multi_goal_plan(
         [{"name": "Funded from corpus", "target_today": 10000, "years": 5,
           "monthly_contribution": 0, "current_corpus": 20000}],
-        monthly_budget=1000,
-        simulations=50,
+        monthly_budget=1000, simulations=50,
     )
     assert result["funded_total"] == 0
     assert result["goals"][0]["funded_monthly"] == 0
@@ -74,14 +74,28 @@ def test_goal_specific_portfolios_use_distinct_horizon_risk_constraints():
             {"name": "Retirement", "target_today": 5000000, "years": 25,
              "monthly_contribution": 5000},
         ],
-        monthly_budget=10000,
-        returns=returns,
-        household_risk_score=60,
+        monthly_budget=10000, returns=returns, household_risk_score=60,
         simulations=50,
     )
     near, long = result["goals"]
     assert near["risk_score"] < long["risk_score"]
-    assert near["portfolio_allocation"]
-    assert long["portfolio_allocation"]
+    assert near["portfolio_allocation"] and long["portfolio_allocation"]
     assert sum(x["weight"] for x in near["portfolio_allocation"]) == pytest.approx(1)
     assert sum(x["weight"] for x in long["portfolio_allocation"]) == pytest.approx(1)
+    assert 0 <= result["household_success_probability"] <= 1
+
+
+def test_joint_success_is_bounded_by_each_marginal_probability():
+    result = evaluate_multi_goal_plan(
+        [
+            {"name": "Goal A", "target_today": 100000, "years": 3,
+             "monthly_contribution": 1000},
+            {"name": "Goal B", "target_today": 100000, "years": 8,
+             "monthly_contribution": 1000},
+        ],
+        monthly_budget=2000, simulations=300, seed=19,
+    )
+    assert result["household_success_probability"] <= min(
+        g["goal_probability"] for g in result["goals"]
+    ) + 1e-12
+    assert result["joint_simulations"] == 300
