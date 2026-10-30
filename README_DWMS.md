@@ -168,3 +168,14 @@ The advanced research module `engine/advanced_risk.py` provides:
 - Walk-forward, long-only minimum-variance backtesting with trailing-window estimation and buy-and-hold benchmark comparison.
 
 The regime simulation uses a Gaussian within-regime monthly approximation and should be compared with block-bootstrap and stress scenarios. The walk-forward engine is a baseline, not yet a full tax-aware transaction-cost-aware implementation. Neither engine should be presented as validated until tests have been run on the local source data and sensitivity analysis is complete.
+
+
+### Mutual-fund research universe
+
+Build a shortlist from the source master directory:
+
+```powershell
+python data\build_mutual_fund_universe.py --min-records 500 --per-category 3 --export-navs
+```
+
+This exports a catalogue audit, a category-based shortlist of recent Direct Growth schemes, selected NAV histories, and an aligned NAV return panel. The shortlist is capped per category rather than treating all 37,896 schemes as separate optimiser candidates. Growth-plan NAVs reflect reinvested distributions and are net of fund expenses; they remain subject to scheme-merger, benchmark and survivorship checks. Observed NAV history is blended into the quantitative engine when available. This is a research screening set, not a recommendation list.
