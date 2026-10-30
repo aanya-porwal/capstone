@@ -41,7 +41,7 @@ def load_prices():
                     series[str(name)] = s
         except (ValueError, OSError, pd.errors.ParserError):
             pass
-    return pd.concat(series,axis=1,join='outer').sort_index() if series else pd.DataFrame()
+    return pd.concat(series,axis=1,join='outer',sort=False).sort_index() if series else pd.DataFrame()
 
 def market_features(returns):
     if returns.empty: return pd.DataFrame()
@@ -155,17 +155,41 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
     if tax_regime=='Old': cons.append({'type':'ineq','fun':lambda w:tax_monthly_cap-w[tax_idx].sum()})
     x0=np.ones(n)/n
     res=minimize(obj,x0,method='SLSQP',bounds=bounds,constraints=cons,options={'maxiter':1200,'ftol':1e-10})
+    solver_mode='requested_objective_with_risk_cap'
+    fallback_used=False
     if not res.success:
-        # Risk cap can be infeasible for given priors; relax to a valid low-volatility solution, disclose it.
-        cons=[{'type':'eq','fun':lambda w:w.sum()-1},{'type':'ineq','fun':lambda w:equity_cap-w[eq_idx].sum()}]
-        if tax_regime=='Old': cons.append({'type':'ineq','fun':lambda w:tax_monthly_cap-w[tax_idx].sum()})
-        res=minimize(lambda w: w@cov@w,x0,method='SLSQP',bounds=bounds,constraints=cons,options={'maxiter':1200})
+        # The requested risk cap may be infeasible under the asset priors and bounds.
+        # Re-solve a minimum-variance problem without that cap, then report the breach.
+        fallback_used=True
+        solver_mode='minimum_variance_fallback_without_risk_cap'
+        fallback_cons=[{'type':'eq','fun':lambda w:w.sum()-1},
+                       {'type':'ineq','fun':lambda w:equity_cap-w[eq_idx].sum()}]
+        if tax_regime=='Old':
+            fallback_cons.append({'type':'ineq','fun':lambda w:tax_monthly_cap-w[tax_idx].sum()})
+        res=minimize(lambda w: w@cov@w,x0,method='SLSQP',bounds=bounds,
+                     constraints=fallback_cons,options={'maxiter':1200,'ftol':1e-10})
     if not res.success: raise RuntimeError('Portfolio optimisation failed: '+res.message)
     w=np.maximum(res.x,0); w=w/w.sum(); ret,risk=stats(w)
+    equity_weight=float(w[eq_idx].sum())
+    tax_weight=float(w[tax_idx].sum())
+    tolerance=1e-6
+    risk_cap_satisfied=bool(risk<=risk_cap+tolerance)
+    equity_cap_satisfied=bool(equity_weight<=equity_cap+tolerance)
+    tax_cap_satisfied=bool(tax_regime!='Old' or tax_weight<=tax_monthly_cap+tolerance)
     contributions=w*(cov@w)/max(risk,1e-12)
     result=assets[['asset','class','evidence']].copy(); result['weight']=w; result['monthly_amount']=w*monthly_budget; result['risk_contribution']=contributions
     result=result[result.weight>.002].sort_values('weight',ascending=False)
-    return {'allocation':result,'expected_return':ret,'volatility':risk,'equity_weight':float(w[eq_idx].sum()),'risk_cap':risk_cap,'equity_cap':equity_cap,'tax_regime':tax_regime,'tax_deduction_monthly_cap':tax_monthly_cap,'moments':{'mu':mu,'cov':cov,'assets':assets},'empirical':emp,'solver_success':bool(res.success),'objective':objective}
+    return {'allocation':result,'expected_return':ret,'volatility':risk,
+            'equity_weight':equity_weight,'tax_weight':tax_weight,
+            'risk_cap':risk_cap,'risk_cap_satisfied':risk_cap_satisfied,
+            'risk_constraint_relaxed':bool(not risk_cap_satisfied),
+            'equity_cap':equity_cap,'equity_cap_satisfied':equity_cap_satisfied,
+            'tax_regime':tax_regime,'tax_deduction_monthly_cap':tax_monthly_cap,
+            'tax_cap_satisfied':tax_cap_satisfied,
+            'solver_mode':solver_mode,'fallback_used':fallback_used,
+            'constraint_tolerance':tolerance,
+            'moments':{'mu':mu,'cov':cov,'assets':assets},'empirical':emp,
+            'solver_success':bool(res.success),'objective':objective}
 
 def bootstrap_goal(current, monthly, years, target, allocation, returns, simulations=5000, seed=42):
     months=max(1,int(years*12)); rng=np.random.default_rng(seed)

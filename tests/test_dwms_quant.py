@@ -44,3 +44,21 @@ def test_tax_aware_rebalance_drift_band():
     result=tax_aware_rebalance({'Equity':80000,'Debt':20000},{'Equity':.6,'Debt':.4},drift_threshold=.05)
     assert len(result['trades'])==2
     assert result['estimated_tax'] is None  # no tax-lot data: must not imply zero tax
+
+
+def test_optimizer_reports_risk_constraint_feasibility():
+    rng = np.random.default_rng(101)
+    returns = pd.DataFrame({
+        'Nifty 50 ETF': rng.normal(.0005, .012, 500),
+        'Gold ETF': rng.normal(.0002, .009, 500),
+    })
+    out = optimise(returns, risk_score=20, horizon=2, monthly_budget=10000)
+    assert 'risk_cap_satisfied' in out
+    assert out['risk_constraint_relaxed'] is (not out['risk_cap_satisfied'])
+    assert out['solver_mode'] in {
+        'requested_objective_with_risk_cap',
+        'minimum_variance_fallback_without_risk_cap',
+    }
+    assert out['equity_cap_satisfied']
+    assert out['tax_cap_satisfied']
+    assert out['solver_success']
