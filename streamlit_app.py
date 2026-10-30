@@ -16,6 +16,7 @@ from engine.advanced_risk import historical_cvar, portfolio_return_series, regim
 from engine.research_data import load_sgb, load_macro
 from engine.sgb import sgb_instrument_table
 from engine.fixed_income import yield_curve_scenarios
+from engine.multi_goal import evaluate_multi_goal_plan
 from dwms.capital_gains import estimate_capital_gains, sgb_coupon_tax
 
 st.set_page_config(page_title='DWMS | Personal Wealth Intelligence',page_icon='◈',layout='wide',initial_sidebar_state='expanded')
@@ -208,10 +209,34 @@ elif page=='Goals & simulations':
             paths.append({'Scenario':scen.title(),'Year':list(range(years_view+1))[-1],'Monthly income at horizon':vals[-1]})
         st.dataframe(pd.DataFrame(paths).style.format({'Monthly income at horizon':'₹{:,.0f}'}),hide_index=True,use_container_width=True)
         st.line_chart(pd.DataFrame({'Conservative':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'conservative'),'Base':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'base'),'Optimistic':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'optimistic')}))
-        if analysis:
-            g=analysis['goal_simulation']; c1,c2,c3=st.columns(3); c1.metric('Primary-goal attainment',f"{g['goal_probability']:.1%}"); c2.metric('10th percentile corpus',f"₹{g['p10']:,.0f}"); c3.metric('90th percentile corpus',f"₹{g['p90']:,.0f}")
-            st.caption(f"Primary goal only: {g['method']} across {g['simulations']:,} paths. Goal target is inflation-adjusted. The current bundled multi-asset history is insufficient for a fully empirical portfolio bootstrap; Gaussian proxy results are not forecasts.")
-        st.caption('Separate per-goal portfolio optimisation is shown as a planning architecture; the current full Monte Carlo engine remains attached to the primary goal. Other goals share the household budget but do not yet each have independent path simulations.')
+        st.markdown('#### Independent goal-level simulations')
+        base_return=float((analysis or {}).get('expected_return',0.08))
+        base_vol=float((analysis or {}).get('volatility',0.12))
+        try:
+            multi=evaluate_multi_goal_plan(
+                goals,
+                monthly_budget=min(surplus,profile.get('monthly_investment',surplus)),
+                default_return=base_return,
+                default_volatility=base_vol,
+                simulations=2500,
+            )
+            goal_results=pd.DataFrame(multi['goals'])
+            if not goal_results.empty:
+                st.dataframe(
+                    goal_results[['name','years','inflation_adjusted_target','funded_monthly','annual_return_assumption','volatility_assumption','goal_probability','p10','median','p90','status']].style.format({
+                        'inflation_adjusted_target':'₹{:,.0f}','funded_monthly':'₹{:,.0f}',
+                        'annual_return_assumption':'{:.1%}','volatility_assumption':'{:.1%}',
+                        'goal_probability':'{:.1%}','p10':'₹{:,.0f}','median':'₹{:,.0f}','p90':'₹{:,.0f}'
+                    }),
+                    hide_index=True,use_container_width=True
+                )
+                st.caption(f"Shared budget funded: ₹{multi['funded_total']:,.0f} / ₹{multi['monthly_budget']:,.0f}. Each goal uses its own horizon, inflation-adjusted target and Monte Carlo paths.")
+                st.info(multi['simulation_interpretation'])
+            else:
+                st.info('Add at least one goal to run independent goal simulations.')
+        except (ValueError, KeyError, TypeError) as exc:
+            st.warning(f'Goal simulation needs input review: {exc}')
+        st.caption(f'Planning return and volatility defaults are drawn from the current primary portfolio model ({base_return:.1%} return, {base_vol:.1%} volatility). They are shared starting assumptions, not separately optimised goal portfolios. Change the model in a later iteration to assign distinct portfolio allocations and correlated household paths.')
 
 
 elif page=='Risk lab':
