@@ -12,33 +12,28 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .streamlit/secrets.toml
-data/raw/
-data/external/
-data/market_data/
-models/*.pkl
-models/*.joblib
-
-# Local databases and generated files
-data/*.db
-data/*.sqlite*
-.pytest_cache/
-.coverage
+*.coverage
 htmlcov/
 .DS_Store
 Thumbs.db
 
-# Local research datasets
+# Local research datasets and generated data
 dwms_research_data/
-
-# Private and generated files
+data/raw/
+data/external/
+data/market_data/
+data/cache/
 data/*.db
 data/*.sqlite*
-data/cache/
 data/live_config.json
 market_data/processed/
-\n# Generated external research outputs (keep source Parquet clone separate)\ndata/research_coverage.csv\ndata/research_coverage.json\ndata/prices/research_*.csv\ndata/prices/research_price_manifest.json\n
-# Generated mutual-fund research outputs
+data/research_coverage.csv
+data/research_coverage.json
+data/prices/research_*.csv
+data/prices/research_price_manifest.json
 data/mutual_fund_catalog_audit.csv
 data/mutual_fund_shortlist.csv
 data/mutual_fund_asset_assumptions.csv
 data/mutual_fund_nav/
+models/*.pkl
+models/*.joblib

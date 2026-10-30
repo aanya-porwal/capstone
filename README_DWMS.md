@@ -1,207 +1,131 @@
-# DWMS — Local Personal Wealth Intelligence Prototype
+# DWMS — Quantitative Wealth Management Research Prototype
 
-A local-first Streamlit prototype for conversational onboarding, financial profiling, goal planning, quantitative portfolio construction, scenario analysis and illustrative Indian tax logic.
+A local-first Streamlit research prototype for Indian household financial planning, multi-goal portfolio construction, risk analysis and illustrative tax-aware modelling. It is an academic engineering system, not regulated investment advice or a production investment platform.
 
 ## Run on Windows 11
 
 1. Install Python 3.10 or 3.11 (64-bit).
-2. Extract the ZIP into a writable folder.
-3. Open PowerShell in that folder.
-4. Create and activate an environment:
+2. Open PowerShell in the project directory.
+3. Create and activate an environment:
 
    ```powershell
    py -3.11 -m venv .venv
    .\.venv\Scripts\Activate.ps1
    python -m pip install --upgrade pip
    pip install -r requirements-prototype.txt
-   ```
-
-5. Start the application:
-
-   ```powershell
    streamlit run streamlit_app.py
    ```
 
-   Or double-click `run_dwms.bat` (it installs the small prototype requirements and launches Streamlit).
+4. Optional: configure the separate research dataset path using `DWMS_RESEARCH_DATA_DIR`; see the research-data section below.
+5. Run tests with `pytest -q`.
 
-6. Create a local account. Passwords are stored as PBKDF2-HMAC-SHA256 hashes with per-user random salts. Profiles, goals, recommendation snapshots and conversation messages are stored in `data/dwms_users.db`.
+The Streamlit prototype stores profiles, goals and chat history in a local SQLite database. Passwords are PBKDF2-HMAC-SHA256 hashes with per-user salts. The database itself is not encrypted. Protect the device and database file.
 
-## Optional local LLM
+## Current implementation inventory
 
-Read `OLLAMA_SETUP.md`. The suggested `qwen2.5:3b` model runs locally via Ollama. The app uses CPU inference and works without Ollama using a deterministic fallback. No paid API key is required.
+### Application and planning
+- Streamlit application with local registration/login, profile capture, conversational onboarding and profile review.
+- Household cash-flow and career-income scenarios.
+- Multiple goal records with pro-rata contributions constrained by a shared monthly budget.
+- Goal-specific risk constraints and portfolio allocations.
+- Correlated household Monte Carlo reporting marginal goal probabilities and the probability that all goals succeed on the same simulated household path.
+- Tax intelligence, market intelligence, risk lab and goal-planning pages.
 
-## What is implemented
+### Portfolio and quantitative engine
+- SLSQP constrained portfolio optimisation with balanced-utility, minimum-variance and risk-parity objectives.
+- Risk-score and horizon-dependent exposure constraints, asset bounds, old-regime 80C headroom constraints, and fallback when the requested risk cap is infeasible.
+- Expected-return priors blended with observed history; class-level correlation priors for assets without sufficient common history.
+- Ledoit-Wolf covariance shrinkage for the empirical observed block and positive-semidefinite covariance repair.
+- Black-Litterman reverse optimisation, Bayesian posterior expected returns from explicit views and confidence levels, and long-only mean-variance allocation with optional turnover penalty.
+- Student-t GARCH(1,1) maximum-likelihood estimation, volatility forecasts and parametric VaR/CVaR.
+- K-Means descriptive regime clustering and Markov regime-switching Monte Carlo.
+- Historical VaR/CVaR and walk-forward minimum-variance baseline backtesting.
+- Leakage-controlled walk-forward ML return forecasting using lagged/momentum/volatility features, Ridge and histogram gradient boosting, compared with a historical-mean baseline.
 
-- Local multi-user registration and login; per-user profile, recommendations and chat history in SQLite.
-- Conversational onboarding that asks one question at a time and extracts approximate answers, with a profile page for review/correction.
-- Separate risk-tolerance and risk-capacity inputs; these are user-reported planning indicators, not validated psychometric measures.
-- Career-aware profile fields (employment type, sector, experience, income growth, expense growth and EMI) with conservative/base/optimistic income trajectories.
-- Multiple simultaneous goals stored in the user profile, with distinct target/horizon/corpus/contribution fields and pro-rata funding against a shared household surplus. The full Monte Carlo remains primary-goal-only in this revision; this limitation is disclosed in-app.
-- Allocation explanation table describing each asset sleeve, its portfolio role, data quality and horizon suitability.
-- Side-by-side simplified new/old regime tax estimate for Tax Year 2026-27, with slab assumptions, standard deduction, indicative rebate and 4% cess; includes clear exclusions and regime trade-offs.
-- Goal target inflation adjustment; monthly contribution and goal horizon feed the simulation.
-- 13-instrument prototype universe spanning Indian/global equity, gold, fixed income, deposits, ELSS, PPF and NPS.
-- SLSQP constrained portfolio optimisation with risk-score/horizon-based equity and volatility caps; alternative minimum-variance and risk-parity objectives.
-- Empirical statistics for the two bundled series, transparent correlation priors for unobserved assets, Ledoit-Wolf shrinkage for the observed covariance block, and positive-semidefinite covariance repair.
-- Unsupervised K-Means market regime classification using rolling volatility, momentum and drawdown. This is descriptive regime clustering, not a validated market forecast.
-- Goal simulation. Historical moving-block bootstrap is used only when all material holdings have aligned empirical data; otherwise a Gaussian proxy simulation is explicitly labelled.
-- Tax module: old-regime 80C headroom constraint for ELSS/PPF allocation, equity STCG/LTCG estimator, tax-aware illustrative withdrawal-lot selection and drift-band rebalance suggestions.
-- Data provenance and educational reference pages.
+### Instruments and research data
+- Prototype assumptions for equity, global equity, gold, fixed income, deposits, ELSS, PPF, NPS, index proxies, gold ETF, REITs and InvITs.
+- External data loaders for indices, listed securities, commodity references, mutual-fund NAV/catalogue, SGBs, macro series and corporate actions.
+- Mutual-fund shortlist pipeline for recent Direct Growth schemes.
+- Separate REIT/InvIT distribution-adjusted proxy builder where parseable cash distribution events exist.
+- SGB cash-flow summaries and approximate fixed-income duration/convexity sensitivity.
+- Instrument-aware capital-gains estimates and separate SGB coupon tax estimate.
 
-## Data inventory and limitations
+## Quantitative methodology
 
-Bundled files:
+### Expected returns and covariance
+For asset (i), observed CAGR and a prior expected return are blended:
+[
+\hat\mu_i = 0.45\,\mu_{i,observed}+0.55\,\mu_{i,prior}
+]
+with broad clipping. This is a stabilised planning estimate, not a forecast. The covariance matrix combines transparent class-level correlation priors and observed pairwise correlations. Ledoit-Wolf shrinkage is applied to the empirical block with adequate aligned history. The hybrid covariance is eigenvalue-repaired to be positive semidefinite.
 
-- `data/nifty50_historical.csv`: 1,486 daily observations, 2020-01-01 to 2025-12-31; closing price series labelled Nifty 50 ETF in the existing project.
-- `data/goldbees_historical.csv`: 1,486 daily observations, 2020-01-01 to 2025-12-31; GoldBees ETF closing price.
+### Portfolio optimisation
+The current balanced-utility objective is approximately:
+[
+\max_w\quad w^T\mu-0.55\,w^T\Sigma w
+]
+subject to full investment, long-only positions, per-asset caps, equity exposure and volatility constraints. The minimum-variance and risk-parity objectives are also available. If a volatility constraint is infeasible, the current fallback relaxes that constraint while retaining the equity cap; the output must be inspected for the realised model volatility.
 
-These are not 20-year histories and the Nifty ETF price series is not the Nifty 50 Total Returns Index. Other asset classes do not have bundled observed price histories. Their return/volatility/correlation inputs are transparent priors/assumptions, not empirical estimates. The system must not be represented as if all 13 assets have 20-year observed data.
+### Black–Litterman
+The model reverse-optimises market equilibrium returns:
+[
+\Pi=\delta\Sigma w_{mkt}
+]
+and updates them using views (P\mu=Q), view uncertainty \(\Omega\), and prior uncertainty scale \(\tau\):
+[
+\mu_{BL}=\left[(\tau\Sigma)^{-1}+P^T\Omega^{-1}P\right]^{-1}
+\left[(\tau\Sigma)^{-1}\Pi+P^T\Omega^{-1}Q\right]
+]
+Investor views must be supplied explicitly. The module does not fabricate views or yet derive them from ML forecasts.
 
-Optional downloader (expanded ETF proxy coverage; still not official TRI/NAV data):
+### GARCH volatility
+The current volatility model is Student-t GARCH(1,1):
+[
+\sigma_t^2=\omega+\alpha\epsilon_{t-1}^2+\beta\sigma_{t-1}^2
+]
+Parameters are estimated by maximum likelihood. Student-t innovations allow heavier tails than a Gaussian assumption. EGARCH and GJR-GARCH comparison remain future work.
 
-```powershell
-python data\download_market_universe.py --years 10
-```
+### ML forecasting and validation
+The current forecasting module builds features from lagged returns, momentum, realised volatility, downside volatility and drawdown. It predicts the compounded next-(h)-day return. Expanding-window validation uses a purge of (h) observations so training labels do not overlap the forecast origin. Models include Ridge and histogram gradient boosting; historical-mean prediction is the baseline. Metrics include MAE, RMSE, directional accuracy and out-of-sample (R^2).
 
-This attempts to download free Yahoo Finance adjusted-close ETF proxies into `data/prices/`. Provider coverage and ticker availability may change. These are ETF proxies, not official index TRI or mutual fund NAV. Check `data/prices/download_manifest.json` and inspect each series before using it in research. A failed download is not replaced with fabricated values.
+This is a forecasting research module, not yet a production signal. It is not currently wired into the live portfolio optimiser or Streamlit UI. A low forecast error alone does not establish economic value. Forecasts must be tested for stability and portfolio improvement after turnover, fees, taxes and slippage.
 
-Recommended authoritative sources for research-grade data:
+## Important data limitations
 
-- NSE Indices historical data: https://www.niftyindices.com/reports/historical-data (use Nifty 50 TRI rather than price return index).
-- AMFI NAV download: https://www.amfiindia.com/net-asset-value/nav-download (mutual-fund scheme NAV; downloads may require date batching).
-- RBI DBIE: https://dbie.rbihub.in/ (government security yields, gold prices and macro data).
-- SBI deposit rates: https://sbi.bank.in/en/web/interest-rates/interest-rates/deposit-rates
-- Department of Economic Affairs small savings notifications: https://dea.gov.in/
-- NPS Trust: https://npstrust.org.in/
+- Bundled Nifty and GoldBeES daily series are finite historical price series, not 20-year universal asset histories. The Nifty series is not confirmed as TRI.
+- External research clone: https://github.com/aswinv90/indian-market-historical-data. The source's licence metadata is restrictive/unclear; use for personal/educational research only unless written commercial permission is obtained.
+- The external repository is expected in a sibling folder named `dwms_research_data`, or configured with `DWMS_RESEARCH_DATA_DIR`. Raw Parquet data should remain outside this repository.
+- Index series must not be assumed to be TRI. Commodity spot prices are not investible ETF returns. Government bond yields are not bond total returns.
+- REIT/InvIT price histories exclude distributions unless the separately generated distribution proxy has been reviewed. Event coverage is not guaranteed complete.
+- Mutual-fund screening is not a recommendation process. Scheme mergers, survivorship, plan/option classification and benchmark consistency require further review.
+- Many instruments still rely on assumed expected returns, volatility and correlations. The universe catalogue is broader than the empirically validated price panel.
 
-## Quantitative methodology and caveats
-
-1. Historical observed asset return: daily price percentage changes. Historical annualised volatility uses daily sample standard deviation times square-root 252. Historical CAGR uses geometric compounding over observed trading days.
-2. Expected return: observed asset CAGR is blended 45% with the prior return 55%, then clipped to a broad planning range. This is a stabilising assumption, not a predictive estimator.
-3. Covariance: transparent class-level correlation priors are used where observations are absent. Ledoit-Wolf shrinkage is applied to the empirical block of assets with sufficient aligned history. The resulting matrix is eigenvalue-floored to ensure positive semidefiniteness. This hybrid matrix is partly model-assumed.
-4. Optimisation: SLSQP minimises a return-risk utility, minimum variance or risk-contribution dispersion subject to full investment, non-negative weights, asset caps, equity exposure and a risk ceiling. If the risk ceiling is infeasible, the fallback relaxes the volatility ceiling while retaining the equity cap; check reported volatility before interpreting output.
-5. Market regimes: K-Means with three clusters on rolling realised volatility, momentum, drawdown and gold momentum. Cluster labels are assigned by a transparent composite score. This is exploratory and in-sample; no forecasting or trading signal claim is made.
-6. Goal simulations: contributions are added monthly after each simulated return. The future goal is inflated at the user-selected annual goal inflation. A historical block bootstrap is only used if every material portfolio holding has aligned observed return history. With current bundled data the app correctly falls back to a Gaussian proxy using the model's estimated mean and volatility.
-7. Tax: the salary tax comparison is a simplified Tax Year 2026-27 illustration; it excludes surcharge, marginal relief, special-rate income, HRA and many personal eligibility checks. The capital-gains/lot modules remain narrow and illustrative. It models equity-oriented listed-security gain estimates, basic 80C headroom under old-regime assumptions, and a demonstration tax-aware lot ordering. It omits detailed slab tax, surcharge/marginal relief, all instrument-specific tax categories, STT, loss set-off, exit loads, dividend tax, actual lot-level FIFO rules, and legal transition complexities. Rebalancing is a drift-band suggestion only; it requires supplied holdings and tax lots and does not execute trades. Do not use it for filing or investment execution.
-
-## Testing
-
-Run:
-
-```powershell
-pytest -q
-```
-
-The original test suite is retained, with additional tests for covariance validity, optimisation, simulation fallback and tax calculations.
-
-## Next engineering steps
-
-1. Replace ETF proxies with official Nifty TRI, AMFI NAV and RBI data; store raw source files and download timestamps.
-2. Add monthly aligned total-return series for every investable exposure; do not infer unavailable returns from an asset label.
-3. Add walk-forward regime validation, out-of-sample optimisation, block bootstrap and backtesting with transaction costs.
-4. Add a full Indian tax rules engine reviewed against the Income-tax Act, 2025 / Rules, 2026 and current official guidance; include slab tax, surcharge, cess, loss harvesting, FIFO lots and instrument-specific rules.
-5. Extend per-goal independent portfolio optimisation and Monte Carlo; this revision supports multiple goal budgets but only simulates the legacy primary goal end-to-end.
-6. Add a proper drift-band rebalancer, trade-cost model and tax-aware sell-lot selection before claiming full tax-aware rebalancing.
-7. Add automated tests for profile parsing, user isolation, numerical edge cases and UI flows.
-
-## Safety and intended use
-
-This is an academic research and demonstration prototype. It does not provide regulated investment advice, verify suitability under SEBI requirements, connect to a broker, or execute trades. Outputs are estimates under disclosed assumptions and can be wrong. User data is stored locally in plaintext SQLite apart from password hashes; protect the device and database file.
-
-## External research dataset integration
-
-The DWMS research loaders can read the separately cloned dataset repository:
-
-- Repository: https://github.com/aswinv90/indian-market-historical-data
-- Local folder expected by default: `../dwms_research_data` (sibling of this project folder).
-- Override with `DWMS_RESEARCH_DATA_DIR` if the clone is elsewhere.
-- Source licence: non-commercial, personal and educational research only. Commercial use requires prior written permission from the dataset author. Review the source repository `LICENSE` before redistributing any data.
-
-### Windows PowerShell
+### Build external research outputs
 
 ```powershell
-$env:DWMS_RESEARCH_DATA_DIR = "C:\Users\aanya\Downloads\DWMS_local_prototype\dwms_research_data"
-python data\build_research_manifest.py
-```
-
-### Available loaders
-
-- `load_index("NIFTY_50")`, `load_index("NIFTY_500")` and other index files.
-- `load_listed_security("GOLDBEES", "BSE")` and other listed securities.
-- `load_gold_etf_prices()` for listed gold ETF price proxies available in the source tree.
-- `load_reit_invit_prices()` for listed REIT/InvIT unit price histories available in the source tree.
-- `load_commodity("GOLD")` and `load_commodity("SILVER")` for bullion reference prices.
-- `load_mutual_fund_catalog()` and `load_mutual_fund_nav(scheme_code)` for scheme metadata and NAV history.
-- `load_sgb("master" | "cashflows" | "market_prices")` for SGB reference data.
-- `load_macro("CPI" | "FX" | "GSEC_10Y_YIELD" | "RBI_POLICY")` for macro and rates context.
-- `load_corporate_actions()` for listed-equity corporate actions.
-
-`data/build_research_manifest.py` writes a local coverage report to `data/research_coverage.csv` and metadata to `data/research_coverage.json`. These generated files are local outputs and should not be committed unless intentionally curated. The price-panel builder exports only selected derived CSV series into `data/prices/`; raw Parquet data stays in the external clone. The quantitative engine reads these files with sparse date alignment, so one asset’s shorter history does not truncate every other asset. New series remain price-return proxies until their TRI, corporate-action and distribution treatment is verified.
-
-### Return-series safeguards
-
-- Index files are not assumed to be total-return indices (TRI).
-- Gold/silver bullion prices are not ETF returns.
-- Listed REIT/InvIT unit prices exclude cash distributions until those events are explicitly incorporated.
-- A 10-year government bond yield series is not a government-bond return series.
-- Mutual-fund NAVs must be classified by scheme, plan (Direct/Regular), option (Growth/IDCW), merger history and inception date before portfolio use.
-- The source repository is useful for research coverage but its own licence restricts commercial use; do not redistribute its raw files or use them in a commercial deployment without permission.
-
-The integration loaders expose source observations and provenance. They do not silently turn proxies into investible total-return histories. Optimiser eligibility must be granted only after data-quality and return-methodology checks.
-
-## Expanded empirical panel and advanced risk research
-
-After the external research clone is available, run:
-
-```powershell
-$env:DWMS_RESEARCH_DATA_DIR = "C:\Users\aanya\Downloads\DWMS_local_prototype\dwms_research_data"
+$env:DWMS_RESEARCH_DATA_DIR = "C:\path\to\dwms_research_data"
 python data\build_research_manifest.py
 python data\build_research_price_panel.py
+python data\build_mutual_fund_universe.py --min-records 500 --per-category 3 --export-navs
 pytest -q
 ```
 
-The price-panel builder exports selected index, Gold BeES, REIT and InvIT price series into local ignored files under `data/prices/`. `dwms.quant.load_prices()` reads them using an outer date join so shorter histories do not truncate the entire panel. `estimate_moments()` uses observed data where sufficiently covered and retains labelled assumptions for unobserved instruments.
+Generated research panels and manifests are local outputs and are ignored by Git. Inspect coverage and data-quality manifests before using any new instrument in optimisation.
 
-The advanced research module `engine/advanced_risk.py` provides:
-- Historical empirical VaR and CVaR.
-- Three-state Markov regime-switching Monte Carlo, with regimes clustered from trailing benchmark volatility, momentum and drawdown.
-- Walk-forward, long-only minimum-variance backtesting with trailing-window estimation and buy-and-hold benchmark comparison.
+## Tax and regulatory limitations
 
-The regime simulation uses a Gaussian within-regime monthly approximation and should be compared with block-bootstrap and stress scenarios. The walk-forward engine is a baseline, not yet a full tax-aware transaction-cost-aware implementation. Neither engine should be presented as validated until tests have been run on the local source data and sensitivity analysis is complete.
+Tax modules are educational estimates, not a filing engine. Instrument classification, acquisition dates, STT conditions, holding periods, exemptions, losses, surcharge, marginal relief, exit loads, TDS and individual circumstances can change results. Verify all rates and rules against the applicable official Act, Rules and notifications before relying on an estimate. The system does not assess SEBI suitability, provide regulated advice, connect to a broker or execute trades.
 
+## Validation status and next work
 
-### Mutual-fund research universe
+Automated tests run on Python 3.10 and 3.11 through GitHub Actions. Passing tests establish software-level checks on synthetic and bundled test fixtures; they do not validate financial assumptions or prove predictive performance.
 
-Build a shortlist from the source master directory:
+Current next priorities:
+1. Compare GARCH, EGARCH and GJR-GARCH on identical rolling windows using likelihood, AIC/BIC, volatility forecast loss and VaR exceedance tests.
+2. Add Hidden Markov Models with expanding-window state estimation and regime stability diagnostics.
+3. Add ML model selection, feature ablations, benchmark forecasts, prediction calibration and economic backtests.
+4. Connect validated forecasts to Black-Litterman views and portfolio construction only after out-of-sample evaluation.
+5. Add transaction costs, bid-ask spread, taxes, turnover and liquidity constraints to walk-forward backtests.
+6. Replace price proxies with verified TRI/NAV and complete cash-distribution histories.
+7. Audit and modularise the legacy Flask and Streamlit paths; establish one canonical application and one canonical quantitative API.
 
-```powershell
-python data\build_mutual_fund_universe.py --min-records 500 --per-category 3 --export-navs
-```
-
-This exports a catalogue audit, a category-based shortlist of recent Direct Growth schemes, selected NAV histories, and an aligned NAV return panel. The shortlist is capped per category rather than treating all 37,896 schemes as separate optimiser candidates. Growth-plan NAVs reflect reinvested distributions and are net of fund expenses; they remain subject to scheme-merger, benchmark and survivorship checks. Observed NAV history is blended into the quantitative engine when available. This is a research screening set, not a recommendation list.
-
-
-### Distribution-adjusted listed trust returns
-
-The research price-panel builder also attempts a conservative REIT/InvIT distribution adjustment using explicitly labelled dividend/distribution events from the source corporate-actions table. It writes a separate synthetic return-index proxy and records accepted, rejected and unmatched events in the manifest. It does not interpret splits, bonuses or ambiguous action amounts as cash distributions. Review each trust's diagnostics before treating the result as total return; incomplete corporate-action coverage means the series remains a proxy.
-
-
-### SGB and fixed-income research
-
-- `engine/sgb.py` joins RBI SGB tranche metadata, reported per-gram cash flows and secondary-market quote fields by ISIN. It summarises coupon and redemption cash flows separately. The cash-flow table is not assumed complete; validate against official RBI redemption notices.
-- `engine/fixed_income.py` converts a user-supplied modified duration and convexity into a local parallel-yield-shock price sensitivity. It does not treat the RBI 10-year yield series as a bond return series.
-- The Market intelligence page exposes the SGB catalogue and yield-sensitivity table when the external dataset is available.
-
-### Instrument-aware tax estimates
-
-The Tax intelligence page includes a separate instrument-level estimator for listed equity, equity mutual funds, business-trust units, gold/silver ETFs, physical metals, specified debt mutual funds, other mutual funds, bonds and SGBs. SGB coupon income is estimated separately from capital gains.
-
-For Tax Year 2026-27, the SGB maturity exemption is gated on all three conditions: original subscription by an individual, continuous holding from original issue, and redemption at maturity. Secondary-market acquisition and premature redemption do not satisfy this exemption. The estimator uses broad category assumptions and excludes surcharge, marginal relief, loss set-off, treaty effects, TDS and several instrument-specific distribution rules. Do not use it for filing.
-
-Official reference points:
-- Income-tax Department, Income-tax Act 2025 and Rules 2026: https://www.incometaxindia.gov.in/en/income-tax-act-202511
-- CBDT / Income-tax Department, Budget 2026 SGB FAQ: https://incometaxindia.gov.in/Documents/Budget2026/FAQs-Budget-2026.pdf
-- Income-tax Department capital-gains guidance: https://www.incometaxindia.gov.in/w/capital-gain
-- AMFI mutual-fund tax guidance: https://www.amfiindia.com/investor/knowledge-center-info?zoneName=TaxRegimeForMutualFunds
-
-Tax rules change and depend on instrument structure, acquisition date, listing, STT and investor status. Verify the current Act, Rules and notifications before using any estimate.
