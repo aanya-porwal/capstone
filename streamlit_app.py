@@ -12,6 +12,7 @@ from dwms.assistant import reply,ollama_available
 from dwms.onboarding import STEPS,parse_step
 from dwms.tax_compare import compare_regimes
 from dwms.planning import salary_path, future_monthly_surplus, allocate_household_surplus, allocation_rationale
+from engine.advanced_risk import historical_cvar, portfolio_return_series, regime_switching_monte_carlo, walk_forward_backtest
 
 st.set_page_config(page_title='DWMS | Personal Wealth Intelligence',page_icon='◈',layout='wide',initial_sidebar_state='expanded')
 init_db()
@@ -58,7 +59,7 @@ with st.sidebar:
     st.markdown('## ◈ DWMS')
     st.caption('PERSONAL WEALTH INTELLIGENCE')
     st.divider()
-    pages=['Overview','Wealth conversation','My financial profile','Portfolio strategy','Goals & simulations','Tax intelligence','Market intelligence','Learn']
+    pages=['Overview','Wealth conversation','My financial profile','Portfolio strategy','Goals & simulations','Risk lab','Tax intelligence','Market intelligence','Learn']
     page=st.radio('WORKSPACE',pages,index=pages.index(st.session_state.page) if st.session_state.page in pages else 0,label_visibility='collapsed')
     st.session_state.page=page
     st.divider(); st.caption('SIGNED IN AS'); st.write(email)
@@ -207,6 +208,65 @@ elif page=='Goals & simulations':
             g=analysis['goal_simulation']; c1,c2,c3=st.columns(3); c1.metric('Primary-goal attainment',f"{g['goal_probability']:.1%}"); c2.metric('10th percentile corpus',f"₹{g['p10']:,.0f}"); c3.metric('90th percentile corpus',f"₹{g['p90']:,.0f}")
             st.caption(f"Primary goal only: {g['method']} across {g['simulations']:,} paths. Goal target is inflation-adjusted. The current bundled multi-asset history is insufficient for a fully empirical portfolio bootstrap; Gaussian proxy results are not forecasts.")
         st.caption('Separate per-goal portfolio optimisation is shown as a planning architecture; the current full Monte Carlo engine remains attached to the primary goal. Other goals share the household budget but do not yet each have independent path simulations.')
+
+
+elif page=='Risk lab':
+    st.title('Risk research lab')
+    st.write('Explore historical tail risk, regime-conditioned scenarios and a walk-forward allocation baseline. Results depend on the selected historical sample and are not forecasts.')
+    if prices.empty or len(prices.columns) < 2:
+        st.warning('Build the external price panel and mutual-fund NAV panel to expand empirical coverage.')
+    else:
+        available=list(prices.columns)
+        default=[x for x in ['Nifty 50 ETF','Gold ETF','Nifty 500 Index Proxy','Embassy REIT Price'] if x in available]
+        selected=st.multiselect('Empirical assets',available,default=default or available[:min(3,len(available))])
+        benchmarks=[x for x in available if x.startswith('Nifty') or x=='Sensex Index Proxy']
+        if benchmarks:
+            benchmark=st.selectbox('Benchmark series',benchmarks)
+        else:
+            benchmark=available[0]
+        horizon=st.slider('Simulation horizon (months)',12,240,60,step=12)
+        simulations=st.select_slider('Simulation paths',[500,1000,2500,5000,10000],value=2500)
+        if len(selected)<1:
+            st.info('Select at least one asset to calculate historical tail risk.')
+        else:
+            weights={x:1/len(selected) for x in selected}
+            try:
+                port=portfolio_return_series(prices,weights)
+                cvar=historical_cvar(port,0.95)
+                a,b,c1=st.columns(3)
+                a.metric('Historical 95% VaR',f"{cvar['var']:.2%}")
+                b.metric('Historical 95% CVaR',f"{cvar['cvar']:.2%}")
+                c1.metric('Worst daily return',f"{cvar['worst_return']:.2%}")
+                st.caption(f"Based on {cvar['observations']:,} aligned daily observations. Loss figures are daily historical estimates.")
+            except ValueError as exc:
+                st.warning(str(exc))
+            if benchmark in prices.columns and benchmark not in selected:
+                try:
+                    result=regime_switching_monte_carlo(
+                        prices,weights,benchmark=benchmark,horizon_months=horizon,
+                        simulations=int(simulations)
+                    )
+                    st.subheader('Regime-switching Monte Carlo')
+                    a,b,c1=st.columns(3)
+                    a.metric('Current descriptive regime',result['current_regime'])
+                    b.metric('Probability of terminal loss',f"{result['probability_of_loss']:.1%}")
+                    c1.metric('Median terminal wealth',f"{result['median_terminal_wealth_multiple']:.2f}×")
+                    st.write('Terminal wealth multiples: 5th percentile',f"{result['p05_terminal_wealth_multiple']:.2f}×",'| 95th percentile',f"{result['p95_terminal_wealth_multiple']:.2f}×")
+                    st.dataframe(result['regime_summary'],use_container_width=True)
+                    st.caption(result['method']+'. Regimes are descriptive historical clusters; the within-regime distribution is an approximation.')
+                except ValueError as exc:
+                    st.info(f'Regime simulation unavailable: {exc}')
+            try:
+                wf=walk_forward_backtest(prices,benchmark=benchmark,lookback=252,rebalance_every=21)
+                rows=[]
+                for label,key in [('Optimised portfolio','portfolio_metrics'),('Benchmark','benchmark_metrics')]:
+                    m=wf[key]
+                    rows.append({'Series':label,'CAGR':m['cagr'],'Volatility':m['volatility'],'Maximum drawdown':m['max_drawdown'],'Total return':m['total_return']})
+                st.subheader('Walk-forward baseline')
+                st.dataframe(pd.DataFrame(rows).style.format({k:'{:.2%}' for k in ['CAGR','Volatility','Maximum drawdown','Total return']}),hide_index=True,use_container_width=True)
+                st.caption(f"Out-of-sample window: {wf['out_of_sample_start']} to {wf['out_of_sample_end']}. Walk-forward minimum-variance baseline; no taxes, exit loads or transaction costs.")
+            except ValueError as exc:
+                st.info(f'Walk-forward backtest unavailable: {exc}')
 
 elif page=='Tax intelligence':
     st.title('Tax intelligence')
