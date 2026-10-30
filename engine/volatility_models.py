@@ -68,7 +68,7 @@ def fit_garch_t(returns, *, maxiter=3000):
     return {
         "mean_daily": mean, "omega": omega, "alpha": alpha, "beta": beta,
         "persistence": persistence, "degrees_of_freedom": nu,
-        "conditional_variance": h, "conditional_volatility": np.sqrt(h),
+        "conditional_variance": h, "conditional_volatility": np.sqrt(h),\n        "last_innovation_squared": float(eps[-1]**2),
         "long_run_daily_variance": long_run_variance,
         "log_likelihood": -float(result.fun), "aic": float(2*4 + 2*result.fun),
         "observations": int(len(x)), "converged": bool(result.success),
