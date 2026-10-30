@@ -313,6 +313,7 @@ elif page=='Tax intelligence':
     holding=st.number_input('Holding period (months)',min_value=0,max_value=600,value=18,step=1)
     slab=st.selectbox('Estimated marginal slab rate', [0.05,0.10,0.15,0.20,0.25,0.30],index=5,format_func=lambda x:f'{x:.0%}')
     stt=st.checkbox('Section 112A STT conditions satisfied',value=True)
+    acquisition_date=st.date_input('Acquisition date (required for Section 50AA debt funds)',value=pd.Timestamp('2024-04-01').date()) if tax_asset=='debt_mutual_fund_50aa' else None
     sgb_original=False
     sgb_continuous=False
     sgb_maturity=False
