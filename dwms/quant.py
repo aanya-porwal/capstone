@@ -145,8 +145,8 @@ def bootstrap_goal(current, monthly, years, target, allocation, returns, simulat
     months=max(1,int(years*12)); rng=np.random.default_rng(seed)
     assets,mu,cov=allocation['moments']; w=allocation['allocation'].set_index('asset')['weight']
     # Use actual joint historical observations when available, otherwise a documented factor-prior Gaussian proxy.
-    hist_cols=[x for x in returns.columns if x in w.index]
     materially_held=[x for x,v in w.items() if v>=.02]
+    hist_cols=[x for x in materially_held if x in returns.columns]
     # Bootstrap only when every material portfolio holding has aligned observations.
     if len(hist_cols)>=2 and len(returns)>=80 and set(materially_held).issubset(set(hist_cols)):
         aligned=returns[hist_cols].dropna().to_numpy(); weights=np.array([w.get(x,0) for x in hist_cols]); weights=weights/weights.sum()
