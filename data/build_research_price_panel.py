@@ -11,7 +11,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from engine.distribution_returns import distribution_adjusted_returns\nfrom engine.research_data import (
+from engine.distribution_returns import distribution_adjusted_returns
+from engine.research_data import (
     get_research_root, load_index, load_listed_security, load_corporate_actions,
 )
 
@@ -113,7 +114,7 @@ def main():
     manifest = {
         "source_repository": "https://github.com/aswinv90/indian-market-historical-data",
         "source_root": str(get_research_root(args.root)),
-        "method": "Daily close-level price changes. No distributions are added. Index TRI status and security corporate-action adjustment must be validated separately.",
+        "method": "Daily close-level returns; for listed trusts, a separate distribution-adjusted proxy is emitted only when parseable dividend/distribution events are available. Index TRI status remains unverified.",
         "assets": rows,
     }
     (outdir / "research_price_manifest.json").write_text(
