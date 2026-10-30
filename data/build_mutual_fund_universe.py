@@ -52,7 +52,7 @@ def plan_option(name: str) -> tuple[str, str]:
     return plan, option
 
 
-def build_shortlist(root=None, min_records=500, per_category=3, output_dir="data"):
+def build_shortlist(root=None, min_records=500, per_category=3, output_dir="data", min_history_years=3):
     meta = load_mutual_fund_catalog(root).copy()
     required = {"schemeName", "category", "schemeType", "records", "oldestDate", "latestDate"}
     missing = required - set(meta.columns)
@@ -122,7 +122,7 @@ def build_shortlist(root=None, min_records=500, per_category=3, output_dir="data
         columns={"asset_assumption_class": "class"}
     ).to_csv(Path(output_dir) / "mutual_fund_asset_assumptions.csv", index=False)
     shortlist["shortlist_reason"] = (
-        f"Direct Growth; at least {min_records} NAV records; recent latest NAV; "
+        f"Direct Growth; at least {min_records} NAV records and {min_history_years} years of history; recent latest NAV; "
         f"top {per_category} by record count within category"
     )
     return meta, shortlist
@@ -173,11 +173,12 @@ def main():
     p.add_argument("--output-dir", default="data")
     p.add_argument("--min-records", type=int, default=500)
     p.add_argument("--per-category", type=int, default=3)
+    p.add_argument("--min-history-years", type=float, default=3)
     p.add_argument("--export-navs", action="store_true")
     args = p.parse_args()
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    meta, shortlist = build_shortlist(args.root, args.min_records, args.per_category, output_dir=out)
+    meta, shortlist = build_shortlist(args.root, args.min_records, args.per_category, output_dir=out, min_history_years=args.min_history_years)
     meta.to_csv(out / "mutual_fund_catalog_audit.csv", index=False)
     shortlist.to_csv(out / "mutual_fund_shortlist.csv", index=False)
     print(f"Catalogue rows: {len(meta):,}")
