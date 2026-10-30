@@ -71,7 +71,8 @@ def distribution_adjusted_returns(prices, corporate_actions, symbol,
     returns.name = f"{symbol}_total_return_proxy"
     diagnostics.attrs["accepted_events"] = int(actions["included"].sum())
     diagnostics.attrs["rejected_events"] = int((~actions["included"]).sum())
+    valid_ex_dates = actions.loc[actions["included"], "Ex_Date"]
     diagnostics.attrs["unmatched_ex_dates"] = int(
-        (~actions.loc[actions["included"], "Ex_Date"].isin(daily.index)).sum()
+        (valid_ex_dates > daily.index.max()).sum()
     )
     return returns, diagnostics
