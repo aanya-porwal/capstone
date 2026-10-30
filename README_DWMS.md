@@ -179,3 +179,8 @@ python data\build_mutual_fund_universe.py --min-records 500 --per-category 3 --e
 ```
 
 This exports a catalogue audit, a category-based shortlist of recent Direct Growth schemes, selected NAV histories, and an aligned NAV return panel. The shortlist is capped per category rather than treating all 37,896 schemes as separate optimiser candidates. Growth-plan NAVs reflect reinvested distributions and are net of fund expenses; they remain subject to scheme-merger, benchmark and survivorship checks. Observed NAV history is blended into the quantitative engine when available. This is a research screening set, not a recommendation list.
+
+
+### Distribution-adjusted listed trust returns
+
+The research price-panel builder also attempts a conservative REIT/InvIT distribution adjustment using explicitly labelled dividend/distribution events from the source corporate-actions table. It writes a separate synthetic return-index proxy and records accepted, rejected and unmatched events in the manifest. It does not interpret splits, bonuses or ambiguous action amounts as cash distributions. Review each trust's diagnostics before treating the result as total return; incomplete corporate-action coverage means the series remains a proxy.
