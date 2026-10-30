@@ -28,6 +28,19 @@ def load_prices():
                 aliases={'nifty_50_etf':'Nifty 50 ETF','nifty_next_50_etf':'Nifty Next 50 ETF','nifty_midcap_etf':'Nifty Midcap ETF','gold_etf':'Gold ETF','liquid_fund_proxy':'Liquid Fund','gilt_etf_proxy':'Government Bond','s_p_500_etf_proxy':'International Equity','nifty_500_etf_proxy':'Nifty 500 ETF proxy','nifty_bank_etf_proxy':'Nifty Bank ETF proxy','bharat_bond_etf_proxy':'Bharat Bond ETF proxy','nifty_100_index_proxy':'Nifty 100 Index Proxy','nifty_200_index_proxy':'Nifty 200 Index Proxy','nifty_500_index_proxy':'Nifty 500 Index Proxy','nifty_bank_index_proxy':'Nifty Bank Index Proxy','nifty_it_index_proxy':'Nifty IT Index Proxy','nifty_pharma_index_proxy':'Nifty Pharma Index Proxy','nifty_midcap_50_index_proxy':'Nifty Midcap 50 Index Proxy','sensex_index_proxy':'Sensex Index Proxy','gold_bees_etf_price':'Gold BeES ETF Price','embassy_reit_price':'Embassy REIT Price','mindspace_reit_price':'Mindspace REIT Price','brookfield_reit_price':'Brookfield India REIT Price','nexus_select_trust_price':'Nexus Select Trust Price','indigrid_invit_price':'IndiGrid InvIT Price','irb_invit_price':'IRB InvIT Price','powergrid_invit_price':'PowerGrid InvIT Price'}
                 series[aliases.get(path.stem,path.stem)]=s.sort_index().pct_change().dropna()
             except Exception: pass
+    # Selected Direct Growth mutual-fund NAVs are expense-net NAV total-return proxies.
+    mf_panel = ROOT/'data/mutual_fund_nav'/'selected_nav_panel.csv'
+    if mf_panel.exists():
+        try:
+            mf = pd.read_csv(mf_panel, index_col=0, parse_dates=True)
+            mf = mf.apply(pd.to_numeric, errors='coerce').sort_index()
+            mf_returns = mf.pct_change(fill_method=None)
+            for name in mf_returns.columns:
+                s = mf_returns[name].replace([np.inf,-np.inf],np.nan).dropna()
+                if len(s) >= 60:
+                    series[str(name)] = s
+        except (ValueError, OSError, pd.errors.ParserError):
+            pass
     return pd.concat(series,axis=1,join='outer').sort_index() if series else pd.DataFrame()
 
 def market_features(returns):
@@ -57,6 +70,19 @@ def detect_regime(returns):
 
 def estimate_moments(returns, assets=None):
     assets=(ASSETS.copy() if assets is None else assets.copy()).reset_index(drop=True)
+    # Add only screened Direct Growth mutual funds; their expected-return and
+    # volatility priors are replaced/blended with observed NAV history below.
+    if assets is ASSETS or assets.equals(ASSETS):
+        mf_assumptions = ROOT/'data/mutual_fund_asset_assumptions.csv'
+        if mf_assumptions.exists():
+            try:
+                mf_assets = pd.read_csv(mf_assumptions)
+                required = {'asset','class','mu','vol','risk','liquidity','lockin','evidence'}
+                if required.issubset(mf_assets.columns):
+                    assets = pd.concat([assets, mf_assets[list(ASSETS.columns)]], ignore_index=True)
+                    assets = assets.drop_duplicates('asset', keep='first').reset_index(drop=True)
+            except (ValueError, OSError, pd.errors.ParserError):
+                pass
     names=assets.asset.tolist(); mu=assets.mu.to_numpy(float); vol=assets.vol.to_numpy(float)
     # Observed daily statistics replace prior values only for assets with enough data.
     empirical={}
