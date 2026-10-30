@@ -99,3 +99,48 @@ def test_joint_success_is_bounded_by_each_marginal_probability():
         g["goal_probability"] for g in result["goals"]
     ) + 1e-12
     assert result["joint_simulations"] == 300
+
+
+@pytest.mark.parametrize("budget", [float("nan"), float("inf"), float("-inf")])
+def test_rejects_non_finite_household_budget(budget):
+    with pytest.raises(ValueError, match="finite"):
+        evaluate_multi_goal_plan([], monthly_budget=budget)
+
+
+@pytest.mark.parametrize("simulations", [0, -1, 1.5, float("nan")])
+def test_rejects_invalid_simulation_count(simulations):
+    with pytest.raises(ValueError, match="positive integer"):
+        evaluate_multi_goal_plan([], monthly_budget=1000, simulations=simulations)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("target_today", float("nan")),
+    ("years", float("inf")),
+    ("monthly_contribution", float("-inf")),
+    ("current_corpus", float("nan")),
+    ("inflation", float("inf")),
+    ("annual_return", float("nan")),
+    ("volatility", float("inf")),
+])
+def test_rejects_non_finite_goal_inputs(field, value):
+    goal = {"name": "Invalid input", "target_today": 100000, "years": 5,
+            "monthly_contribution": 1000, "current_corpus": 0}
+    goal[field] = value
+    with pytest.raises(ValueError, match="finite"):
+        evaluate_multi_goal_plan([goal], monthly_budget=1000, simulations=10)
+
+
+def test_assumption_only_joint_simulation_is_reproducible():
+    goals = [
+        {"name": "Goal A", "target_today": 100000, "years": 5,
+         "monthly_contribution": 1000},
+        {"name": "Goal B", "target_today": 200000, "years": 10,
+         "monthly_contribution": 1000},
+    ]
+    first = evaluate_multi_goal_plan(goals, 2000, simulations=200, seed=123)
+    second = evaluate_multi_goal_plan(goals, 2000, simulations=200, seed=123)
+    assert first["household_success_probability"] == second["household_success_probability"]
+    assert [g["goal_probability"] for g in first["goals"]] == [
+        g["goal_probability"] for g in second["goals"]
+    ]
+    assert "common-factor" in first["joint_simulation_method"]

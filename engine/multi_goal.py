@@ -70,12 +70,15 @@ def evaluate_multi_goal_plan(
 ) -> dict:
     """Evaluate multiple goals against one contribution budget and common market paths."""
     goals = list(goals)
-    if monthly_budget < 0:
-        raise ValueError("Monthly budget cannot be negative.")
-    if default_return < 0 or default_volatility < 0:
-        raise ValueError("Return and volatility assumptions cannot be negative.")
-    if simulations < 1:
-        raise ValueError("Simulations must be at least one.")
+    if not np.isfinite(monthly_budget) or monthly_budget < 0:
+        raise ValueError("Monthly budget must be finite and non-negative.")
+    if (not np.isfinite(default_return) or not np.isfinite(default_volatility)
+            or default_return < 0 or default_volatility < 0):
+        raise ValueError("Return and volatility assumptions must be finite and non-negative.")
+    if not isinstance(simulations, (int, np.integer)) or simulations < 1:
+        raise ValueError("Simulations must be a positive integer.")
+    if not isinstance(seed, (int, np.integer)):
+        raise ValueError("Seed must be an integer.")
 
     requests = []
     for goal in goals:
@@ -89,6 +92,9 @@ def evaluate_multi_goal_plan(
         volatility = float(goal.get("volatility", default_volatility))
         if not name:
             raise ValueError("Every goal must have a name.")
+        numeric_values = (target, years, contribution, corpus, inflation, annual_return, volatility)
+        if not all(np.isfinite(value) for value in numeric_values):
+            raise ValueError(f"All financial inputs must be finite for {name}.")
         if target < 0 or years <= 0 or contribution < 0 or corpus < 0:
             raise ValueError(f"Invalid target, horizon, contribution or corpus for {name}.")
         if inflation < 0 or annual_return < 0 or volatility < 0:
