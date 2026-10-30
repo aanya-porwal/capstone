@@ -38,6 +38,7 @@ def test_shortlist_uses_requested_output_directory_and_stable_scheme_identity(mo
 def test_export_nav_panel_keeps_same_named_schemes_separate(monkeypatch, tmp_path):
     root = tmp_path / "research"
     (root / "data" / "MF").mkdir(parents=True)
+    (root / "data" / "MF" / "nav_part_0.parquet").touch()
     frame = pd.DataFrame(
         {
             "date": pd.to_datetime(["2026-01-01", "2026-01-01"]),
