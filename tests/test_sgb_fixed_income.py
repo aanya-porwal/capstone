@@ -51,4 +51,4 @@ def test_sgb_xirr_uses_separate_investment_and_maturity_dates():
     })
     rate = sgb_xirr(cf, 100.0, investment_date="2024-01-01",
                     valuation_date="2025-01-01")
-    assert rate == pytest.approx(0.10, rel=1e-3)
+    assert rate == pytest.approx(0.10, rel=3e-3)

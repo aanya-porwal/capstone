@@ -55,3 +55,33 @@ def test_zero_requested_contributions_are_safe():
     )
     assert result["funded_total"] == 0
     assert result["goals"][0]["funded_monthly"] == 0
+
+
+def test_goal_specific_portfolios_use_distinct_horizon_risk_constraints():
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(7)
+    dates = pd.bdate_range("2022-01-01", periods=320)
+    returns = pd.DataFrame({
+        "Nifty 50 ETF": rng.normal(0.0004, 0.01, len(dates)),
+        "Gold ETF": rng.normal(0.0002, 0.006, len(dates)),
+    }, index=dates)
+    result = evaluate_multi_goal_plan(
+        [
+            {"name": "Near-term deposit", "target_today": 500000, "years": 2,
+             "monthly_contribution": 5000},
+            {"name": "Retirement", "target_today": 5000000, "years": 25,
+             "monthly_contribution": 5000},
+        ],
+        monthly_budget=10000,
+        returns=returns,
+        household_risk_score=60,
+        simulations=50,
+    )
+    near, long = result["goals"]
+    assert near["risk_score"] < long["risk_score"]
+    assert near["portfolio_allocation"]
+    assert long["portfolio_allocation"]
+    assert sum(x["weight"] for x in near["portfolio_allocation"]) == pytest.approx(1)
+    assert sum(x["weight"] for x in long["portfolio_allocation"]) == pytest.approx(1)
