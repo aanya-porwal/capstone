@@ -5,6 +5,7 @@ import pytest
 
 from engine.research_data import (
     get_research_root,
+    build_coverage_report,
     load_asset_return_series,
     load_commodity,
     load_index,
@@ -63,3 +64,20 @@ def test_asset_price_panel_preserves_non_overlapping_history():
     assert "Nifty 50 ETF" in returns.columns
     assert "Gold ETF" in returns.columns
     assert returns.index.is_monotonic_increasing
+
+
+
+def test_coverage_report_reads_datetime_index_dates(tmp_path):
+    path = tmp_path / "data" / "INDICES"
+    path.mkdir(parents=True)
+    pd.DataFrame(
+        {"Close": [100.0, 101.0]},
+        index=pd.DatetimeIndex(["2024-01-02", "2024-01-03"], name="Date"),
+    ).to_parquet(path / "NIFTY_50.parquet")
+
+    report = build_coverage_report(tmp_path)
+    row = report.loc[report["dataset"].eq("NIFTY_50")].iloc[0]
+
+    assert row["status"] == "present"
+    assert row["start_date"] == "2024-01-02"
+    assert row["end_date"] == "2024-01-03"
