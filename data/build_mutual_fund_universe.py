@@ -52,7 +52,7 @@ def plan_option(name: str) -> tuple[str, str]:
     return plan, option
 
 
-def build_shortlist(root=None, min_records=500, per_category=3):
+def build_shortlist(root=None, min_records=500, per_category=3, output_dir="data"):
     meta = load_mutual_fund_catalog(root).copy()
     required = {"schemeName", "category", "schemeType", "records", "oldestDate", "latestDate"}
     missing = required - set(meta.columns)
@@ -73,6 +73,9 @@ def build_shortlist(root=None, min_records=500, per_category=3):
     if meta["scheme_code"].isna().all():
         raise ValueError("Could not resolve schemeCode from catalogue column or index.")
     meta["research_category"] = meta.apply(classify_category, axis=1)
+    # Scheme codes, not display names, are the stable identity of NAV series.
+    meta["scheme_name_duplicate"] = meta["schemeName"].astype(str).duplicated(keep=False)
+    meta["scheme_identity"] = meta["scheme_code"].astype(str) + " | " + meta["schemeName"].astype(str)
     plan_opts = meta["schemeName"].map(plan_option)
     meta["plan"] = [x[0] for x in plan_opts]
     meta["option"] = [x[1] for x in plan_opts]
@@ -103,7 +106,7 @@ def build_shortlist(root=None, min_records=500, per_category=3):
         "Retirement/Solution": "Retirement / multi-asset",
     }
     shortlist["asset_class"] = shortlist["research_category"].map(category_classes).fillna("Indian equity")
-    shortlist["asset"] = shortlist["schemeName"].astype(str).str.strip()
+    shortlist["asset"] = shortlist["scheme_identity"].astype(str).str.strip()
     shortlist["mu"] = 0.09
     shortlist["vol"] = 0.18
     shortlist["risk"] = shortlist["asset_class"].map({
@@ -112,11 +115,11 @@ def build_shortlist(root=None, min_records=500, per_category=3):
     }).fillna(3)
     shortlist["liquidity"] = 0.75
     shortlist["lockin"] = 0
-    shortlist["evidence"] = "Direct Growth NAV; observed history, expense-net; category prior for forward moments"
+    shortlist["evidence"] = "Observed Direct Growth NAV history; forward return/volatility are provisional category placeholders, not fund estimates"
     shortlist["asset_assumption_class"] = shortlist["asset_class"]
     shortlist[["asset", "asset_assumption_class", "mu", "vol", "risk", "liquidity", "lockin", "evidence"]].rename(
         columns={"asset_assumption_class": "class"}
-    ).to_csv(Path("data") / "mutual_fund_asset_assumptions.csv", index=False)
+    ).to_csv(Path(output_dir) / "mutual_fund_asset_assumptions.csv", index=False)
     shortlist["shortlist_reason"] = (
         f"Direct Growth; at least {min_records} NAV records; recent latest NAV; "
         f"top {per_category} by record count within category"
@@ -155,6 +158,7 @@ def export_selected_navs(shortlist: pd.DataFrame, root=None, outdir="data/mutual
     nav.to_parquet(out / "selected_nav_long.parquet", index=False)
     names = shortlist.set_index(shortlist["scheme_code"].astype(int))["schemeName"].to_dict()
     nav["series_name"] = nav["schemeCode"].map(names)
+    nav["series_name"] = nav["schemeCode"].astype(str) + " | " + nav["series_name"].astype(str)
     panel = nav.pivot(index="date", columns="series_name", values="nav").sort_index()
     panel.to_csv(out / "selected_nav_panel.csv")
     returns = panel.pct_change(fill_method=None)
@@ -172,7 +176,7 @@ def main():
     args = p.parse_args()
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    meta, shortlist = build_shortlist(args.root, args.min_records, args.per_category)
+    meta, shortlist = build_shortlist(args.root, args.min_records, args.per_category, output_dir=out)
     meta.to_csv(out / "mutual_fund_catalog_audit.csv", index=False)
     shortlist.to_csv(out / "mutual_fund_shortlist.csv", index=False)
     print(f"Catalogue rows: {len(meta):,}")
