@@ -150,6 +150,22 @@ def load_corporate_actions(root: str | Path | None = None) -> pd.DataFrame:
     return read_table("data/CORPORATE_ACTIONS/corporate_actions.parquet", root)
 
 
+def load_gold_etf_prices(root: str | Path | None = None) -> dict[str, pd.DataFrame]:
+    """Load listed gold ETF price proxies; these are not bullion spot prices."""
+    candidates = {
+        "Nippon India ETF Gold BeES": ("GOLDBEES", "BSE"),
+        "BSL Gold ETF": ("BSLGOLDETF", "BSE"),
+        "Quantum Gold Fund": ("QGOLDHALF", "BSE"),
+        "Groww Gold ETF": ("GROWWGOLD", "BSE"),
+    }
+    result = {}
+    for name, (symbol, exchange) in candidates.items():
+        try:
+            result[name] = load_listed_security(symbol, exchange, root)
+        except FileNotFoundError:
+            continue
+    return result
+
 def load_reit_invit_prices(root: str | Path | None = None) -> dict[str, pd.DataFrame]:
     """Load known listed REIT/InvIT symbols when present in the source clone.
 
@@ -157,9 +173,9 @@ def load_reit_invit_prices(root: str | Path | None = None) -> dict[str, pd.DataF
     and applying the correct tax/withholding treatment; this function does not do so.
     """
     candidates = {
-        "Embassy REIT": ("EMBASSY", "NSE"),
-        "Mindspace REIT": ("MINDSPACE", "NSE"),
-        "Brookfield India REIT": ("BIRET", "NSE"),
+        "Embassy REIT": ("EMBASSY", "BSE"),
+        "Mindspace REIT": ("MINDSPACE", "BSE"),
+        "Brookfield India REIT": ("BIRET", "BSE"),
         "Nexus Select Trust": ("NEXUSSURGL", "BSE"),
         "IndiGrid InvIT": ("INDIGRID", "BSE"),
         "IRB InvIT": ("IRBINVIT", "BSE"),
