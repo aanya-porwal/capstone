@@ -8,6 +8,7 @@ not calculate surcharge, marginal relief, loss set-off, TDS or treaty effects.
 from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
+import pandas as pd
 
 
 @dataclass(frozen=True)
@@ -44,7 +45,8 @@ def estimate_capital_gains(asset_type: str, gain: float, holding_months: int,
                            stt_eligible: bool = True,
                            sgb_original_subscriber: bool = False,
                            sgb_held_continuously_to_maturity: bool = False,
-                           sgb_redemption_at_maturity: bool = False) -> dict:
+                           sgb_redemption_at_maturity: bool = False,
+                           acquisition_date=None) -> dict:
     """Estimate tax on a positive realised gain for supported asset categories."""
     key = str(asset_type).lower().strip()
     if key not in RULES:
@@ -61,8 +63,18 @@ def estimate_capital_gains(asset_type: str, gain: float, holding_months: int,
                 "warning": "Coupon interest is separate and remains taxable; retain original subscription and holding evidence."}
 
     rule = RULES[key]
-    long_term = holding_months >= rule.holding_period_months
-    if key == "debt_mutual_fund_50aa" or key == "unlisted_bond":
+    if key == "debt_mutual_fund_50aa":
+        if acquisition_date is None:
+            raise ValueError("acquisition_date is required to determine whether section 50AA applies")
+        acquired = pd.Timestamp(acquisition_date).date()
+        if acquired < date(2023, 4, 1):
+            long_term = holding_months >= 24
+            rule = TaxRule(24, 0.125, "slab")
+        else:
+            long_term = False
+    else:
+        long_term = holding_months >= rule.holding_period_months
+    if key == "unlisted_bond":
         long_term = False
     if not long_term:
         rate = 0.20 if rule.stcg_rate == "special_20" else marginal_slab_rate
