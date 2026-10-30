@@ -15,8 +15,8 @@ def _metrics(returns: pd.Series) -> dict:
     years = len(s) / 252.0
     cagr = float(wealth.iloc[-1] ** (1 / years) - 1) if wealth.iloc[-1] > 0 else np.nan
     vol = float(s.std(ddof=1) * np.sqrt(252))
-    downside = s[s < 0]
-    downside_vol = float(downside.std(ddof=1) * np.sqrt(252)) if len(downside) > 1 else np.nan
+    downside = np.minimum(s.to_numpy(), 0.0)
+    downside_vol = float(np.sqrt(np.mean(np.square(downside))) * np.sqrt(252)) if np.any(downside < 0) else np.nan
     drawdown = wealth / wealth.cummax() - 1
     max_dd = float(drawdown.min())
     return {
@@ -66,7 +66,9 @@ def walk_forward_compare(
         raise ValueError("Not enough non-benchmark assets")
     opt_parts, equal_parts, benchmark_parts, records = [], [], [], []
     prior = pd.Series(dtype=float)
+    prior_equal = pd.Series(dtype=float)
     turnover_total = 0.0
+    equal_turnover_total = 0.0
     for start in range(lookback, len(data), rebalance_every):
         train = data.iloc[start-lookback:start]
         test = data.iloc[start:min(start+rebalance_every, len(data))]
@@ -92,10 +94,14 @@ def walk_forward_compare(
             continue
         weights = pd.Series(result.x, index=selected)
         turnover = 1.0 if prior.empty else float(weights.subtract(prior, fill_value=0).abs().sum()/2)
+        equal_weights = pd.Series(1.0 / len(selected), index=selected)
+        equal_turnover = 1.0 if prior_equal.empty else float(equal_weights.subtract(prior_equal, fill_value=0).abs().sum()/2)
         net = held.dot(weights)
         net.iloc[0] -= turnover * transaction_cost_bps / 10000
+        equal_net = held.dot(equal_weights)
+        equal_net.iloc[0] -= equal_turnover * transaction_cost_bps / 10000
         opt_parts.append(net.rename("optimised"))
-        equal_parts.append(held.mean(axis=1).rename("equal_weight"))
+        equal_parts.append(equal_net.rename("equal_weight"))
         benchmark_parts.append(test[benchmark].dropna().rename("benchmark"))
         records.append({"date": test.index[0], "one_way_turnover": turnover, **weights.to_dict()})
         turnover_total += turnover
@@ -116,6 +122,8 @@ def walk_forward_compare(
         "out_of_sample_end": str(aligned.index.max()),
         "average_one_way_turnover": float(turnover_total / len(records)),
         "cumulative_one_way_turnover": float(turnover_total),
+        "equal_weight_average_one_way_turnover": float(equal_turnover_total / len(records)),
+        "equal_weight_cumulative_one_way_turnover": float(equal_turnover_total),
         "transaction_cost_bps": float(transaction_cost_bps),
         "method": "Expanding calendar; trailing-window Ledoit-Wolf minimum variance; monthly rebalance; transaction costs applied at rebalance",
     }
