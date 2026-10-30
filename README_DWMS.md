@@ -148,3 +148,23 @@ python data\build_research_manifest.py
 - The source repository is useful for research coverage but its own licence restricts commercial use; do not redistribute its raw files or use them in a commercial deployment without permission.
 
 The integration loaders expose source observations and provenance. They do not silently turn proxies into investible total-return histories. Optimiser eligibility must be granted only after data-quality and return-methodology checks.
+
+## Expanded empirical panel and advanced risk research
+
+After the external research clone is available, run:
+
+```powershell
+$env:DWMS_RESEARCH_DATA_DIR = "C:\Users\aanya\Downloads\DWMS_local_prototype\dwms_research_data"
+python data\build_research_manifest.py
+python data\build_research_price_panel.py
+pytest -q
+```
+
+The price-panel builder exports selected index, Gold BeES, REIT and InvIT price series into local ignored files under `data/prices/`. `dwms.quant.load_prices()` reads them using an outer date join so shorter histories do not truncate the entire panel. `estimate_moments()` uses observed data where sufficiently covered and retains labelled assumptions for unobserved instruments.
+
+The advanced research module `engine/advanced_risk.py` provides:
+- Historical empirical VaR and CVaR.
+- Three-state Markov regime-switching Monte Carlo, with regimes clustered from trailing benchmark volatility, momentum and drawdown.
+- Walk-forward, long-only minimum-variance backtesting with trailing-window estimation and buy-and-hold benchmark comparison.
+
+The regime simulation uses a Gaussian within-regime monthly approximation and should be compared with block-bootstrap and stress scenarios. The walk-forward engine is a baseline, not yet a full tax-aware transaction-cost-aware implementation. Neither engine should be presented as validated until tests have been run on the local source data and sensitivity analysis is complete.
