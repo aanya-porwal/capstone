@@ -327,7 +327,7 @@ elif page=='Tax intelligence':
                 tax_asset,gain,holding,slab,stt_eligible=stt,
                 sgb_original_subscriber=sgb_original,
                 sgb_held_continuously_to_maturity=sgb_continuous,
-                sgb_redemption_at_maturity=sgb_maturity
+                sgb_redemption_at_maturity=sgb_maturity, acquisition_date=acquisition_date
             )
             a,b,c1=st.columns(3)
             a.metric('Classification',estimate['classification'])
