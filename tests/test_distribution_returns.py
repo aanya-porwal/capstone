@@ -37,3 +37,9 @@ def test_ambiguous_non_cash_actions_are_not_added():
 def test_requires_valid_price_columns():
     with pytest.raises(ValueError):
         distribution_adjusted_returns(pd.DataFrame(), pd.DataFrame(), "ABC")
+
+
+def test_numeric_cash_amount_parser_rejects_ratios():
+    from engine.distribution_returns import _cash_amount
+    assert _cash_amount("Rs. 1.50 per share") == 1.50
+    assert pd.isna(_cash_amount("1:2"))
