@@ -15,10 +15,13 @@ def sample_returns(n=1100):
 
 
 def test_dataset_uses_forward_compounded_target():
-    r = pd.Series([.01, .02, -.01, .03, .02], index=pd.bdate_range("2024-01-01", periods=5))
+    dates = pd.bdate_range("2024-01-01", periods=100)
+    values = np.linspace(-.01, .01, 100)
+    r = pd.Series(values, index=dates)
     d = build_forecast_dataset(r, horizon=2)
-    # At t=day 2, next two returns are day 3 and day 4.
-    expected = (1-.01)*(1+.03)-1
+    first_origin = d.index[0]
+    pos = r.index.get_loc(first_origin)
+    expected = (1 + values[pos+1]) * (1 + values[pos+2]) - 1
     assert d.iloc[0]["target"] == pytest.approx(expected)
 
 
