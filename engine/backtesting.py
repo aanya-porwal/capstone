@@ -91,7 +91,7 @@ def walk_forward_compare(
         if not result.success:
             continue
         weights = pd.Series(result.x, index=selected)
-        turnover = float(weights.subtract(prior, fill_value=0).abs().sum()/2)
+        turnover = 1.0 if prior.empty else float(weights.subtract(prior, fill_value=0).abs().sum()/2)
         net = held.dot(weights)
         net.iloc[0] -= turnover * transaction_cost_bps / 10000
         opt_parts.append(net.rename("optimised"))
