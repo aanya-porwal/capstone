@@ -1,14 +1,30 @@
 asset,class,mu,vol,risk,liquidity,lockin,evidence
-Nifty 50 ETF,Indian equity,0.105,0.19,4,0.95,0,observed
-Nifty Next 50 ETF,Indian equity,0.115,0.23,5,0.90,0,proxy
-Nifty Midcap ETF,Indian equity,0.12,0.25,5,0.90,0,proxy
-Large Cap Fund,Indian equity,0.105,0.18,4,0.80,0,proxy
-International Equity,Global equity,0.095,0.20,4,0.90,0,proxy
-Gold ETF,Gold,0.085,0.16,3,0.95,0,observed
+Nifty 50 ETF,Indian equity,0.105,0.19,4,0.95,0,existing ETF price history
+Nifty Next 50 ETF,Indian equity,0.115,0.23,5,0.90,0,assumption
+Nifty Midcap ETF,Indian equity,0.12,0.25,5,0.90,0,assumption
+Large Cap Fund,Indian equity,0.105,0.18,4,0.80,0,assumption
+International Equity,Global equity,0.095,0.20,4,0.90,0,assumption
+Gold ETF,Gold,0.085,0.16,3,0.95,0,existing ETF price history
 Government Bond,Fixed income,0.065,0.055,2,0.80,0,assumption
 Corporate Bond,Fixed income,0.072,0.075,2,0.70,0,assumption
 Fixed Deposit,Cash/deposit,0.065,0.015,1,0.90,0,assumption
 Liquid Fund,Cash/deposit,0.055,0.008,1,0.98,0,assumption
-ELSS,Tax-advantaged equity,0.105,0.19,4,0.30,3,proxy
+ELSS,Tax-advantaged equity,0.105,0.19,4,0.30,3,assumption
 PPF,Tax-advantaged fixed income,0.071,0.01,1,0.20,15,official-rate assumption
-NPS Tier I,Retirement / multi-asset,0.085,0.11,3,0.25,0,proxy
+NPS Tier I,Retirement / multi-asset,0.085,0.11,3,0.25,0,assumption
+Nifty 100 Index Proxy,Indian equity,0.105,0.19,4,0.95,0,price index proxy; not TRI
+Nifty 200 Index Proxy,Indian equity,0.108,0.20,4,0.95,0,price index proxy; not TRI
+Nifty 500 Index Proxy,Indian equity,0.11,0.21,4,0.95,0,price index proxy; not TRI
+Nifty Bank Index Proxy,Indian equity,0.12,0.25,5,0.95,0,sector index proxy; not TRI
+Nifty IT Index Proxy,Indian equity,0.12,0.24,5,0.95,0,sector index proxy; not TRI
+Nifty Pharma Index Proxy,Indian equity,0.11,0.22,4,0.95,0,sector index proxy; not TRI
+Nifty Midcap 50 Index Proxy,Indian equity,0.12,0.25,5,0.95,0,price index proxy; not TRI
+Sensex Index Proxy,Indian equity,0.105,0.19,4,0.95,0,price index proxy; not TRI
+Gold BeES ETF Price,Gold,0.085,0.16,3,0.95,0,listed ETF price; distribution adjustment unverified
+Embassy REIT Price,REIT/InvIT,0.09,0.18,3,0.85,0,listed unit price; distributions excluded
+Mindspace REIT Price,REIT/InvIT,0.09,0.18,3,0.85,0,listed unit price; distributions excluded
+Brookfield India REIT Price,REIT/InvIT,0.09,0.19,3,0.85,0,listed unit price; distributions excluded
+Nexus Select Trust Price,REIT/InvIT,0.09,0.18,3,0.85,0,listed unit price; distributions excluded
+IndiGrid InvIT Price,REIT/InvIT,0.085,0.15,3,0.85,0,listed unit price; distributions excluded
+IRB InvIT Price,REIT/InvIT,0.085,0.18,4,0.80,0,listed unit price; distributions excluded
+PowerGrid InvIT Price,REIT/InvIT,0.08,0.14,3,0.85,0,listed unit price; distributions excluded
