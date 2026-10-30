@@ -219,6 +219,11 @@ elif page=='Goals & simulations':
                 default_return=base_return,
                 default_volatility=base_vol,
                 simulations=2500,
+                returns=prices,
+                household_risk_score=int(profile.get('risk_score',50)),
+                age=int(profile.get('age',30)),
+                tax_regime=profile.get('tax_regime','New'),
+                existing_80c=float(profile.get('existing_80c',0)),
             )
             goal_results=pd.DataFrame(multi['goals'])
             if not goal_results.empty:
@@ -236,7 +241,14 @@ elif page=='Goals & simulations':
                 st.info('Add at least one goal to run independent goal simulations.')
         except (ValueError, KeyError, TypeError) as exc:
             st.warning(f'Goal simulation needs input review: {exc}')
-        st.caption(f'Planning return and volatility defaults are drawn from the current primary portfolio model ({base_return:.1%} return, {base_vol:.1%} volatility). They are shared starting assumptions, not separately optimised goal portfolios. Change the model in a later iteration to assign distinct portfolio allocations and correlated household paths.')
+        st.caption(f"{multi['portfolio_method']}. Each goal receives horizon-adjusted risk constraints and its own allocation. Return and volatility are estimates from observed data blended with priors; they are not guaranteed outcomes.")
+            with st.expander('Inspect goal-specific allocations'):
+                for goal_row in multi['goals']:
+                    st.markdown(f"**{goal_row['name']}** · risk score {goal_row['risk_score']}/100")
+                    if goal_row['portfolio_allocation']:
+                        st.dataframe(pd.DataFrame(goal_row['portfolio_allocation'])[['asset','weight','monthly_amount','evidence']].style.format({'weight':'{:.1%}','monthly_amount':'₹{:,.0f}'}),hide_index=True,use_container_width=True)
+                    else:
+                        st.caption('Allocation unavailable; no usable price panel.')
 
 
 elif page=='Risk lab':

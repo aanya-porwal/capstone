@@ -22,6 +22,11 @@ def evaluate_multi_goal_plan(
     default_volatility: float = 0.12,
     simulations: int = 2500,
     seed: int = 42,
+    returns=None,
+    household_risk_score: int = 50,
+    age: int = 30,
+    tax_regime: str = 'New',
+    existing_80c: float = 0,
 ) -> dict:
     """Evaluate goals independently while enforcing a shared monthly budget.
 
@@ -67,11 +72,24 @@ def evaluate_multi_goal_plan(
         required = required_monthly_investment(
             inflated_target, corpus, annual_return, years
         )
+        portfolio = None
+        goal_return, goal_volatility = annual_return, volatility
+        allocation_rows = []
+        goal_risk = int(np.clip(household_risk_score + (-25 if years <= 3 else (-12 if years <= 5 else (0 if years <= 10 else 8))), 0, 100))
+        if returns is not None and not getattr(returns, 'empty', True):
+            from dwms.quant import optimise
+            objective = 'min_variance' if years <= 3 else 'balanced_utility'
+            portfolio = optimise(returns, risk_score=goal_risk, horizon=int(math.ceil(years)), monthly_budget=funded, objective=objective, age=age, tax_regime=tax_regime, existing_80c=existing_80c)
+            goal_return = float(portfolio['expected_return'])
+            goal_volatility = float(portfolio['volatility'])
+            allocation_rows = portfolio['allocation'].to_dict('records')
+            projected = future_value(corpus, funded, goal_return, years)
+            required = required_monthly_investment(inflated_target, corpus, goal_return, years)
         mc = run_monte_carlo(
             current_savings=corpus,
             monthly_investment=funded,
-            expected_return=annual_return,
-            volatility=volatility,
+            expected_return=goal_return,
+            volatility=goal_volatility,
             years=years,
             goal_amount=inflated_target,
             simulations=simulations,
@@ -86,8 +104,10 @@ def evaluate_multi_goal_plan(
             "requested_monthly": requested,
             "funded_monthly": funded,
             "funding_ratio": funded / requested if requested else 0.0,
-            "annual_return_assumption": annual_return,
-            "volatility_assumption": volatility,
+            "annual_return_assumption": goal_return,
+            "volatility_assumption": goal_volatility,
+            "risk_score": goal_risk,
+            "portfolio_allocation": allocation_rows,
             "projected_value": projected,
             "required_monthly_at_assumed_return": required,
             "deterministic_shortfall": max(0.0, inflated_target - projected),
@@ -106,6 +126,7 @@ def evaluate_multi_goal_plan(
         "funded_total": float(sum(row["funded_monthly"] for row in results)),
         "unallocated_budget": float(max(0.0, monthly_budget - sum(row["funded_monthly"] for row in results))),
         "contribution_scale": float(scale),
+        "portfolio_method": "Goal-specific constrained optimisation" if returns is not None and not getattr(returns, "empty", True) else "Assumption-only simulation; no price panel supplied",
         "simulation_interpretation": (
             "Each goal is simulated independently with its own random paths. "
             "Goal probabilities must not be added or interpreted as the probability "
