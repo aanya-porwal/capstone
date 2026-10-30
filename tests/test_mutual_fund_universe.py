@@ -6,15 +6,16 @@ from data import build_mutual_fund_universe as mf
 def _catalogue():
     return pd.DataFrame(
         {
-            "schemeCode": [101, 202],
+            "schemeCode": [101, 202, 303],
             "schemeName": [
                 "Example Large Cap Fund - Direct Plan - Growth",
                 "Example Large Cap Fund - Direct Plan - Growth",
+                "New Example Fund - Direct Plan - Growth",
             ],
-            "category": ["Equity Scheme - Large Cap Fund"] * 2,
-            "schemeType": ["Open Ended"] * 2,
-            "records": [1200, 900],
-            "oldestDate": ["2020-01-01", "2021-01-01"],
+            "category": ["Equity Scheme - Large Cap Fund"] * 3,
+            "schemeType": ["Open Ended"] * 3,
+            "records": [1200, 900, 1500],
+            "oldestDate": ["2020-01-01", "2021-01-01", "2025-01-01"],
             "latestDate": ["2026-10-29", "2026-10-29"],
         }
     )
@@ -26,6 +27,7 @@ def test_shortlist_uses_requested_output_directory_and_stable_scheme_identity(mo
     meta, shortlist = mf.build_shortlist(output_dir=tmp_path)
 
     assert len(shortlist) == 2
+    assert meta.loc[meta["scheme_code"].eq(303), "age_years"].iloc[0] < 3
     assert shortlist["scheme_identity"].nunique() == 2
     assert shortlist["scheme_name_duplicate"].all()
     assert shortlist["asset"].nunique() == 2
