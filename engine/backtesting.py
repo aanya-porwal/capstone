@@ -100,6 +100,8 @@ def walk_forward_compare(
         net.iloc[0] -= turnover * transaction_cost_bps / 10000
         equal_net = held.dot(equal_weights)
         equal_net.iloc[0] -= equal_turnover * transaction_cost_bps / 10000
+        equal_turnover_total += equal_turnover
+        prior_equal = equal_weights
         opt_parts.append(net.rename("optimised"))
         equal_parts.append(equal_net.rename("equal_weight"))
         benchmark_parts.append(test[benchmark].dropna().rename("benchmark"))
