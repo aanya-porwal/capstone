@@ -86,6 +86,32 @@ def build_shortlist(root=None, min_records=500, per_category=3):
         ["research_category", "records", "latestDate"], ascending=[True, False, False]
     )
     shortlist = eligible.groupby("research_category", group_keys=False).head(per_category).copy()
+    # Map shortlisted Direct Growth NAV series into optimiser-compatible rows.
+    category_classes = {
+        "Large Cap": "Indian equity", "Large & Mid Cap": "Indian equity",
+        "Flexi/Multi Cap": "Indian equity", "Mid Cap": "Indian equity",
+        "Small Cap": "Indian equity", "Focused": "Indian equity",
+        "Sector/Thematic": "Indian equity", "Index/ETF": "Indian equity",
+        "International": "Global equity", "ELSS/Tax Saver": "Tax-advantaged equity",
+        "Debt/Gilt": "Fixed income", "Money Market/Ultra Short": "Fixed income",
+        "Overnight/Liquid": "Cash/deposit", "Hybrid/Allocation": "Retirement / multi-asset",
+        "Retirement/Solution": "Retirement / multi-asset",
+    }
+    shortlist["asset_class"] = shortlist["research_category"].map(category_classes).fillna("Indian equity")
+    shortlist["asset"] = shortlist["schemeName"].astype(str).str.strip()
+    shortlist["mu"] = 0.09
+    shortlist["vol"] = 0.18
+    shortlist["risk"] = shortlist["asset_class"].map({
+        "Indian equity": 4, "Global equity": 4, "Tax-advantaged equity": 4,
+        "Fixed income": 2, "Cash/deposit": 1, "Retirement / multi-asset": 3,
+    }).fillna(3)
+    shortlist["liquidity"] = 0.75
+    shortlist["lockin"] = 0
+    shortlist["evidence"] = "Direct Growth NAV; observed history, expense-net; category prior for forward moments"
+    shortlist["asset_assumption_class"] = shortlist["asset_class"]
+    shortlist[["asset", "asset_assumption_class", "mu", "vol", "risk", "liquidity", "lockin", "evidence"]].rename(
+        columns={"asset_assumption_class": "class"}
+    ).to_csv(Path("data") / "mutual_fund_asset_assumptions.csv", index=False)
     shortlist["shortlist_reason"] = (
         f"Direct Growth; at least {min_records} NAV records; recent latest NAV; "
         f"top {per_category} by record count within category"
