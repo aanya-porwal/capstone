@@ -229,7 +229,18 @@ def build_coverage_report(root: str | Path | None = None) -> pd.DataFrame:
                     date_col = next((c for c in ("Date", "date") if c in names), None)
                     if date_col:
                         dates = pd.read_parquet(p, columns=[date_col])[date_col]
-                        parsed = pd.to_datetime(dates, errors="coerce").dropna()
+                    elif p.stat().st_size <= 5 * 1024 * 1024:
+                        # Some source files store their observation dates as a
+                        # DatetimeIndex, not a physical Date/date data column.
+                        small_frame = pd.read_parquet(p)
+                        dates = (small_frame.index if isinstance(
+                            small_frame.index, pd.DatetimeIndex
+                        ) else None)
+                    else:
+                        dates = None
+                    if dates is not None:
+                        parsed = pd.to_datetime(dates, errors="coerce")
+                        parsed = pd.Series(parsed).dropna()
                         if not parsed.empty:
                             row["start_date"] = str(parsed.min().date())
                             row["end_date"] = str(parsed.max().date())
