@@ -13,6 +13,8 @@ from dwms.onboarding import STEPS,parse_step
 from dwms.tax_compare import compare_regimes
 from dwms.planning import salary_path, future_monthly_surplus, allocate_household_surplus, allocation_rationale
 from engine.advanced_risk import historical_cvar, portfolio_return_series, regime_switching_monte_carlo, walk_forward_backtest
+from engine.backtesting import walk_forward_compare
+from engine.data_quality import audit_price_frame
 from engine.research_data import load_sgb, load_macro
 from engine.sgb import sgb_instrument_table
 from engine.fixed_income import yield_curve_scenarios
@@ -23,36 +25,69 @@ st.set_page_config(page_title='DWMS | Personal Wealth Intelligence',page_icon='�
 init_db()
 st.markdown('''<style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
-html,body,[class*="css"]{font-family:'DM Sans',sans-serif} h1,h2,h3{font-family:'Manrope',sans-serif;letter-spacing:-.03em}
-.block-container{padding-top:1.5rem;max-width:1440px}.stMetric{background:#18263a!important;padding:15px;border-radius:12px;border:1px solid #34445b!important}.stMetric label,.stMetric [data-testid='stMetricLabel'],.stMetric [data-testid='stMetricValue']{color:#f4f7fb!important}.stMetric [data-testid='stMetricDelta']{color:#c8d7e8!important}
-[data-testid="stSidebar"]{background:#101a2b} [data-testid="stSidebar"] *{color:#eef3fb!important}
-div[data-testid="stChatMessage"]{border:1px solid #e8edf3;border-radius:12px;padding:10px}
-.small-muted{color:#778397;font-size:12px}.hero{background:linear-gradient(115deg,#13253f,#24466a);color:white;padding:25px 28px;border-radius:18px;margin-bottom:20px}
-.hero h1{color:white;margin:0}.hero p{color:#d4e2f1;margin:6px 0 0}
+:root{--dwms-bg:#f5f6f3;--dwms-surface:#ffffff;--dwms-ink:#17251f;--dwms-muted:#718078;--dwms-line:#e3e9e4;--dwms-green:#1f6b50;--dwms-green-soft:#eaf3ee;--dwms-gold:#b58b4b}
+html,body,[class*="css"]{font-family:'DM Sans',sans-serif;color:var(--dwms-ink)}
+.stApp{background:var(--dwms-bg)}
+.block-container{max-width:1320px;padding:2.2rem 3rem 4rem}
+section.main > div.block-container:has(.st-key-login-layout){max-width:1440px;min-height:calc(100vh - 4.5rem);display:flex;flex-direction:column;justify-content:center;padding-top:1.25rem;padding-bottom:3rem}
+.st-key-login-layout{width:100%}
+.st-key-login-layout [data-testid="stHorizontalBlock"]{align-items:center;gap:3rem}
+@media(max-width:900px){section.main > div.block-container:has(.st-key-login-layout){min-height:auto;padding:2rem 1.25rem}.st-key-login-layout [data-testid="stHorizontalBlock"]{gap:1.25rem}}
+h1,h2,h3,h4{font-family:'Manrope',sans-serif!important;color:var(--dwms-ink)!important;letter-spacing:-.035em}
+h1{font-size:2.15rem!important;font-weight:750!important;line-height:1.15!important;margin:0 0 .45rem!important}
+h2{font-size:1.5rem!important;font-weight:700!important}
+h3{font-size:1.12rem!important;font-weight:700!important}
+h4{font-size:1rem!important;font-weight:700!important}
+p,li,label,.stMarkdown{color:var(--dwms-ink)}
+[data-testid="stCaptionContainer"],.small-muted{color:var(--dwms-muted)!important}
+[data-testid="stSidebar"]{background:#17251f;border-right:1px solid #263a31}
+[data-testid="stSidebar"] *{color:#f2f5f1!important}
+[data-testid="stSidebar"] [data-testid="stRadio"] label{padding:.42rem .55rem;border-radius:9px;font-weight:500}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:#263b31}
+[data-testid="stSidebar"] [data-testid="stRadio"] [aria-checked="true"]{background:#29483a;border-radius:9px}
+[data-testid="stMetric"]{background:var(--dwms-surface);border:1px solid var(--dwms-line);border-radius:14px;padding:1.05rem 1.2rem;box-shadow:0 2px 8px rgba(22,45,33,.035)}
+[data-testid="stMetricLabel"]{font-size:.78rem!important;font-weight:600!important;color:var(--dwms-muted)!important}
+[data-testid="stMetricValue"]{font-family:'Manrope',sans-serif!important;font-size:1.75rem!important;font-weight:700!important;color:var(--dwms-ink)!important}
+[data-testid="stMetricDelta"]{font-size:.78rem!important}
+div[data-testid="stVerticalBlockBorderWrapper"]{border-color:var(--dwms-line)!important;border-radius:14px}
+.stButton>button,[data-testid="stFormSubmitButton"] button{border-radius:9px;font-weight:600;min-height:2.65rem}
+.stButton>button[kind="primary"],[data-testid="stFormSubmitButton"] button[kind="primary"]{background:var(--dwms-green);border-color:var(--dwms-green)}
+.stTextInput input,.stNumberInput input,.stSelectbox [data-baseweb="select"],.stTextArea textarea{border-radius:9px}
+hr{border-color:var(--dwms-line)!important}
+div[data-testid="stChatMessage"]{background:var(--dwms-surface);border:1px solid var(--dwms-line);border-radius:14px;padding:1rem}
+.hero{background:linear-gradient(115deg,#183c2e,#28654d);color:#fff;padding:2rem 2.2rem;border-radius:18px;margin:0 0 1.5rem;box-shadow:0 8px 24px rgba(25,65,47,.10)}
+.hero h1{color:#fff!important;font-size:2rem!important;margin:0!important}
+.hero p{color:#dcebe2!important;margin:.55rem 0 0;font-size:1rem}
+[data-testid="stDataFrame"],[data-testid="stTable"]{border:1px solid var(--dwms-line);border-radius:12px;overflow:hidden}
+[data-testid="stPlotlyChart"]{background:var(--dwms-surface);border:1px solid var(--dwms-line);border-radius:14px;padding:.5rem}
+.js-plotly-plot .plotly .modebar{opacity:.45}
 </style>''',unsafe_allow_html=True)
 
 if 'user' not in st.session_state: st.session_state.user=None
 if 'page' not in st.session_state: st.session_state.page='Overview'
 
 def login_screen():
-    a,b=st.columns([1.15,1])
-    with a:
-        st.markdown("<div class='hero'><h1>Wealth management, made personal.</h1><p>Goal-led financial intelligence for India's next generation of investors.</p></div>",unsafe_allow_html=True)
-        st.subheader('A more considered way to invest')
-        st.write('DWMS connects your goals, financial capacity, risk profile, market context and tax position into one explainable planning experience.')
-        st.caption('Local prototype • Your profile is stored in a SQLite database on this device.')
-    with b:
-        st.subheader('Welcome to DWMS')
-        mode=st.radio('Account', ['Sign in','Create account'],horizontal=True)
-        email=st.text_input('Email address'); password=st.text_input('Password',type='password')
-        if mode=='Create account': st.caption('Use a password with at least 10 characters.')
-        if st.button('Continue',type='primary',use_container_width=True):
-            try:
-                if mode=='Create account': uid=register(email,password); user={'id':uid,'email':email.lower()}
-                else: user=authenticate(email,password)
-                if not user: st.error('Email or password is incorrect.')
-                else: st.session_state.user=user; st.rerun()
-            except ValueError as e: st.error(str(e))
+    # A dedicated keyed container lets the login view centre itself vertically
+    # without changing the layout of the authenticated workspace.
+    with st.container(key="login-layout"):
+        a,b=st.columns([1.08,0.92],gap="large",vertical_alignment="center")
+        with a:
+            st.markdown("<div class='hero'><h1>Wealth management, made personal.</h1><p>Goal-led financial intelligence for India's next generation of investors.</p></div>",unsafe_allow_html=True)
+            st.subheader('A more considered way to invest')
+            st.write('DWMS connects your goals, financial capacity, risk profile, market context and tax position into one explainable planning experience.')
+            st.caption('Local prototype • Your profile is stored in a SQLite database on this device.')
+        with b:
+            st.subheader('Welcome to DWMS')
+            mode=st.radio('Account', ['Sign in','Create account'],horizontal=True)
+            email=st.text_input('Email address'); password=st.text_input('Password',type='password')
+            if mode=='Create account': st.caption('Use a password with at least 10 characters.')
+            if st.button('Continue',type='primary',use_container_width=True):
+                try:
+                    if mode=='Create account': uid=register(email,password); user={'id':uid,'email':email.lower()}
+                    else: user=authenticate(email,password)
+                    if not user: st.error('Email or password is incorrect.')
+                    else: st.session_state.user=user; st.rerun()
+                except ValueError as e: st.error(str(e))
 
 if not st.session_state.user:
     login_screen(); st.stop()
@@ -65,7 +100,8 @@ with st.sidebar:
     st.caption('PERSONAL WEALTH INTELLIGENCE')
     st.divider()
     pages=['Overview','Wealth conversation','My financial profile','Portfolio strategy','Goals & simulations','Risk lab','Tax intelligence','Market intelligence','Learn']
-    page=st.radio('WORKSPACE',pages,index=pages.index(st.session_state.page) if st.session_state.page in pages else 0,label_visibility='collapsed')
+    labels={'Wealth conversation':'Wealth assistant (coming soon)','Portfolio strategy':'Investment strategy','Goals & simulations':'My goals','Risk lab':'Portfolio risk','Tax intelligence':'Tax planning'}
+    page=st.radio('WORKSPACE',pages,index=pages.index(st.session_state.page) if st.session_state.page in pages else 0,format_func=lambda item: labels.get(item,item),label_visibility='collapsed')
     st.session_state.page=page
     st.divider(); st.caption('SIGNED IN AS'); st.write(email)
     st.caption('Local account • SQLite')
@@ -79,14 +115,14 @@ def make_analysis(p):
     goal=float(p.get('goal_amount',0)); current=float(p.get('current_savings',0)); inflation=float(p.get('goal_inflation',.06))
     future_goal=goal*((1+inflation)**horizon)
     sim=bootstrap_goal(current,monthly,horizon,future_goal,opt,prices,simulations=5000)
-    return {'expected_return':opt['expected_return'],'volatility':opt['volatility'],'future_goal':future_goal,'goal_inflation':inflation,'equity_weight':opt['equity_weight'],'allocation':opt['allocation'].to_dict('records'),'goal_simulation':{k:v for k,v in sim.items() if k!='final_values'},'regime':regime['label'],'evidence':{r['asset']:r['evidence'] for _,r in ASSETS.iterrows()},'diagnostics':{'equity_cap':opt['equity_cap'],'risk_cap':opt['risk_cap'],'solver_success':opt['solver_success']}}
+    return {'expected_return':opt['expected_return'],'volatility':opt['volatility'],'future_goal':future_goal,'goal_inflation':inflation,'equity_weight':opt['equity_weight'],'allocation':opt['allocation'].to_dict('records'),'goal_simulation':{k:v for k,v in sim.items() if k!='final_values'},'regime':regime['label'],'evidence':{r['asset']:r['evidence'] for _,r in ASSETS.iterrows()},'diagnostics':{'equity_cap':opt['equity_cap'],'risk_cap':opt['risk_cap'],'solver_success':opt['solver_success'],'fallback_used':opt['fallback_used'],'solver_mode':opt['solver_mode'],'concentration_limits':opt['concentration_limits'],'concentration_satisfied':opt['concentration_satisfied'],'risk_cap_satisfied':opt['risk_cap_satisfied'],'tax_cap_satisfied':opt['tax_cap_satisfied']}}
 if all(k in profile for k in ['monthly_investment','risk_score','goal_years','goal_amount']):
     try:
         analysis=make_analysis(profile); save_recommendation(uid,analysis)
     except Exception as e: st.warning(f'Portfolio engine needs profile review: {e}')
 
 if page=='Overview':
-    st.markdown(f'<div class="hero"><h1>Good to see you.</h1><p>Your financial picture, goals and investment strategy in one place.</p></div>',unsafe_allow_html=True)
+    st.markdown(f'<div class="hero"><h1>Your financial picture, in one place.</h1><p>Understand where you stand, what you are working towards and how your investments are positioned.</p></div>',unsafe_allow_html=True)
     if not profile:
         st.info('Start by building your financial profile. You can do this conversationally or enter the essentials in My financial profile.')
         if st.button('Build my financial profile',type='primary'): st.session_state.page='My financial profile'; st.rerun()
@@ -94,17 +130,19 @@ if page=='Overview':
         a=analysis or {}
         c1,c2,c3,c4=st.columns(4)
         c1.metric('Monthly investable amount',f"₹{profile.get('monthly_investment',0):,.0f}")
-        c2.metric('Risk score',f"{profile.get('risk_score',0)}/100")
-        c3.metric('Modelled return',f"{a.get('expected_return',0):.1%}")
-        c4.metric('Modelled volatility',f"{a.get('volatility',0):.1%}")
+        c2.metric('Investment risk profile',f"{profile.get('risk_score',0)}/100",help='A summary of your willingness and financial ability to take investment risk.')
+        c3.metric('Expected annual growth',f"{a.get('expected_return',0):.1%}",help='An assumption-based estimate, not a promised return.')
+        c4.metric('Expected portfolio fluctuations',f"{a.get('volatility',0):.1%}",help='A measure of how widely returns may vary. Losses can be larger than this estimate.')
         st.subheader('Your financial outlook')
         l,r=st.columns([1.25,1])
         with l:
             st.markdown('#### Goal trajectory')
             g=a.get('goal_simulation',{})
-            st.metric('Simulated goal attainment',f"{g.get('goal_probability',0):.1%}",help='Scenario probability from historical block bootstrap where data permits, otherwise Gaussian proxy assumptions.')
-            st.write(f"**Today's target:** ₹{profile.get('goal_amount',0):,.0f} · **Inflation-adjusted target:** ₹{a.get('future_goal',profile.get('goal_amount',0)):,.0f} · **Horizon:** {profile.get('goal_years',0)} years")
-            st.write(f"**Median simulated corpus:** ₹{g.get('median',0):,.0f}")
+            st.metric('Estimated chance of reaching this goal',f"{g.get('goal_probability',0):.1%}",help='Share of simulated scenarios in which the projected investment value reaches the inflation-adjusted target. This is not a guarantee.')
+            st.write(f"**Your target today:** ₹{profile.get('goal_amount',0):,.0f} · **Estimated amount needed in {profile.get('goal_years',0)} years:** ₹{a.get('future_goal',profile.get('goal_amount',0)):,.0f}")
+            st.write(f"**Middle simulation outcome:** ₹{g.get('median',0):,.0f}")
+            if g.get('goal_probability',0) < 0.05:
+                st.warning('The current plan appears unlikely to reach this target. Review the monthly contribution, target amount and time available. The detailed goal planner can estimate the contribution required under the model assumptions.')
             st.caption('Not a guaranteed forecast. Results depend on return, volatility, inflation and contribution assumptions.')
         with r:
             st.markdown('#### Current market regime')
@@ -114,13 +152,41 @@ if page=='Overview':
         st.subheader('Your proposed allocation')
         alloc=pd.DataFrame(a.get('allocation',[]))
         if not alloc.empty:
-            col1,col2=st.columns([1,1.2])
-            with col1: st.plotly_chart(px.pie(alloc,names='asset',values='weight',hole=.55),use_container_width=True)
-            with col2: st.dataframe(alloc[['asset','weight','monthly_amount','evidence']].style.format({'weight':'{:.1%}','monthly_amount':'₹{:,.0f}'}),hide_index=True,use_container_width=True)
+            # A horizontal ranking chart remains readable with many holdings;
+            # a donut legend becomes unusable once the portfolio has several funds.
+            chart=alloc.sort_values('weight',ascending=True).copy()
+            chart['weight_pct']=chart['weight']*100
+            chart['monthly_label']=chart['monthly_amount'].map(lambda x:f'₹{x:,.0f}/mo')
+            fig=px.bar(chart,x='weight_pct',y='asset',orientation='h',text=chart['weight'].map(lambda x:f'{x:.1%}'),
+                       custom_data=['monthly_label','evidence'])
+            fig.update_traces(marker_color='#26745A',textposition='outside',cliponaxis=False,
+                              hovertemplate='<b>%{y}</b><br>Allocation: %{x:.1f}%<br>Contribution: %{customdata[0]}<br>Evidence: %{customdata[1]}<extra></extra>')
+            fig.update_layout(height=max(300, min(680, 58*len(chart)+100)),
+                              margin=dict(l=8,r=75,t=12,b=12),showlegend=False,
+                              xaxis=dict(title='Portfolio weight',ticksuffix='%',rangemode='tozero',showgrid=True,gridcolor='rgba(120,130,140,.18)'),
+                              yaxis=dict(title='',automargin=True,tickfont=dict(size=12)),
+                              paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
+            display=alloc[['asset','weight','monthly_amount','evidence']].copy()
+            display.columns=['Investment','Weight','Monthly contribution','Data basis']
+            st.dataframe(display,hide_index=True,use_container_width=True,height=min(440, 42+len(display)*36),
+                         column_config={
+                             'Investment':st.column_config.TextColumn(width='large'),
+                             'Weight':st.column_config.ProgressColumn(format='%.1f%%',min_value=0,max_value=1),
+                             'Monthly contribution':st.column_config.NumberColumn(format='₹%.0f',width='medium'),
+                             'Data basis':st.column_config.TextColumn(width='medium')
+                         })
+            d=(a.get('diagnostics') or {})
+            if d.get('fallback_used'):
+                st.warning('The requested risk constraint was infeasible. The optimiser used its minimum-variance fallback; review the reported risk before relying on this allocation.')
+            if not d.get('concentration_satisfied',True):
+                st.error('The resulting allocation breaches one or more diversification guardrails. Do not treat it as a suitable portfolio.')
+            limits=d.get('concentration_limits',{})
+            st.caption(f"Concentration guardrails: individual mutual fund ≤ {limits.get('individual_mutual_fund',0):.0%}; small-cap ≤ {limits.get('small_cap',0):.0%}; mid-cap ≤ {limits.get('mid_cap',0):.0%}; sector/thematic ≤ {limits.get('sector_thematic',0):.0%}.")
     st.caption('Prototype notice: no brokerage connectivity, trade execution or regulated investment advice. Assumptions and proxy data are disclosed in Market intelligence.')
 
 elif page=='My financial profile':
-    st.title('Your financial profile'); st.write('Your financial plan should reflect your life, not just your age or salary.')
+    st.title('Your financial profile'); st.write('A clearer picture of your income, spending, savings and priorities helps build a more useful plan.')
     with st.form('profile'):
         c1,c2,c3=st.columns(3)
         age=c1.number_input('Age',18,100,int(profile.get('age',28)))
@@ -167,24 +233,38 @@ elif page=='My financial profile':
         st.info(f"Saved profile: {profile.get('goal_name')} · risk tolerance {profile.get('risk_tolerance')}/100 · risk capacity {profile.get('risk_capacity')}/100. These are separate dimensions, not a psychometric diagnosis. Career: {profile.get('profession','not supplied')} · income growth assumption: {profile.get('income_growth',0):.1%}/year.")
 
 elif page=='Portfolio strategy':
-    st.title('Portfolio strategy'); st.write('Constrained allocation built from historical evidence plus explicit priors.')
+    st.title('Investment strategy'); st.write('See how a diversified mix of investments could be allocated across your monthly budget.')
+    st.caption('The calculations use historical data where available and clearly labelled assumptions where reliable investment-return data is not yet available.')
     if not profile: st.warning('Complete your financial profile first.')
     else:
         objective=st.selectbox('Optimisation objective',['balanced_utility','min_variance','risk_parity'],format_func=lambda x:{'balanced_utility':'Balanced return-risk utility','min_variance':'Minimum variance','risk_parity':'Risk parity'}[x])
         opt=optimise(prices,int(profile['risk_score']),int(profile['goal_years']),float(profile['monthly_investment']),objective,age=int(profile['age']),tax_regime=profile.get('tax_regime','New'),existing_80c=float(profile.get('existing_80c',0)))
-        df=opt['allocation']; st.metric('Expected annual return (assumption blend)',f"{opt['expected_return']:.2%}"); st.metric('Annualised volatility estimate',f"{opt['volatility']:.2%}")
-        st.plotly_chart(px.bar(df,x='asset',y='weight',color='class',hover_data=['evidence']),use_container_width=True)
-        st.dataframe(df.style.format({'weight':'{:.1%}','monthly_amount':'₹{:,.0f}','risk_contribution':'{:.2%}'}),hide_index=True,use_container_width=True)
-        st.markdown('#### Why these weights?')
+        df=opt['allocation']
+        st.markdown("<div class='small-muted'>YOUR PROPOSED PORTFOLIO</div>",unsafe_allow_html=True)
+        m1,m2,m3=st.columns(3)
+        m1.metric('Expected annual return',f"{opt['expected_return']:.2%}",help='Blended estimate using observed history and labelled assumptions; not a forecast.')
+        m2.metric('Annualised volatility',f"{opt['volatility']:.2%}",help='Estimated annual variability of portfolio returns.')
+        m3.metric('Monthly investment budget',f"₹{float(profile['monthly_investment']):,.0f}")
+        st.markdown("#### Allocation by investment")
+        chart=px.bar(df,x='asset',y='weight',color='class',hover_data=['evidence'],text=df['weight'].map(lambda x:f'{x:.0%}'),color_discrete_sequence=['#2d7658','#b58b4b','#7897a8','#9aaf9f','#c58d70'])
+        chart.update_layout(height=360,margin=dict(l=18,r=18,t=24,b=20),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font=dict(family='DM Sans',color='#26372f'),legend_title_text='',yaxis=dict(title='Portfolio weight',tickformat='.0%',gridcolor='#e7ece8',zeroline=False),xaxis=dict(title='',tickangle=-18),showlegend=True)
+        chart.update_traces(textposition='outside',cliponaxis=False)
+        st.plotly_chart(chart,use_container_width=True,config={'displayModeBar':False})
+        st.markdown("#### Allocation details")
+        display=df.copy()
+        st.dataframe(display.style.format({'weight':'{:.1%}','monthly_amount':'₹{:,.0f}','risk_contribution':'{:.1%}'}),hide_index=True,use_container_width=True)
+        st.markdown("#### Why these weights?")
         rationale=pd.DataFrame(allocation_rationale(df.to_dict('records'),int(profile['goal_years']),int(profile['risk_score'])))
         st.dataframe(rationale[['asset','weight','role','data_quality','suitability']].style.format({'weight':'{:.1%}'}),hide_index=True,use_container_width=True)
-        st.caption('Weights are the result of the selected objective, expected-return priors, covariance estimates, asset caps and risk/equity constraints. The optimiser does not establish that the expected returns are achievable or that a specific fund/ETF is suitable.')
-        st.markdown('#### Model diagnostics'); st.json({'equity_weight':opt['equity_weight'],'equity_cap':opt['equity_cap'],'risk_cap':opt['risk_cap'],'solver_success':opt['solver_success'],'empirical_statistics':opt['empirical']})
-        st.warning('Several assets use prior expected returns, volatility and correlation assumptions. The covariance matrix is positive-semidefinite repaired. This is a prototype optimiser, not a verified investable portfolio.')
+        st.caption('Weights depend on the selected objective, return assumptions, covariance estimates and portfolio constraints. They do not establish that expected returns are achievable or that a specific fund or ETF is suitable.')
+        with st.expander('Model diagnostics'):
+            st.json({'equity_weight':opt['equity_weight'],'equity_cap':opt['equity_cap'],'risk_cap':opt['risk_cap'],'solver_success':opt['solver_success'],'empirical_statistics':opt['empirical']})
+        st.warning('Some asset estimates rely on prior assumptions rather than long, continuous historical series. This is a research prototype, not a verified investable portfolio.')
 
 elif page=='Goals & simulations':
-    st.title('Household goals & scenario analysis')
-    st.write('Each goal has its own target, time horizon and notional portfolio. Contributions are constrained by one shared household surplus so the same rupee is not allocated twice.')
+    st.title('Your goals and future plans')
+    st.write('Plan for several goals at once. The planner shares your monthly investment budget across them so the same money is never counted twice.')
+    st.caption('A simulation tests many possible market paths. It helps show a range of outcomes; it cannot predict exactly what will happen.')
     if not profile: st.info('Complete your financial profile first.')
     else:
         goals=list(profile.get('goals') or [{'name':profile.get('goal_name','Primary goal'),'target_today':profile.get('goal_amount',0),'years':profile.get('goal_years',10),'monthly_contribution':profile.get('monthly_investment',0),'current_corpus':profile.get('current_savings',0),'inflation':profile.get('goal_inflation',.06)}])
@@ -195,13 +275,13 @@ elif page=='Goals & simulations':
             add=st.form_submit_button('Add goal')
         if add and gn.strip():
             goals.append({'name':gn.strip(),'target_today':gt,'years':gy,'monthly_contribution':gc,'current_corpus':corpus,'inflation':infl}); profile['goals']=goals; save_profile(uid,profile); st.rerun()
-        st.markdown('#### Shared household cash flow')
+        st.markdown('#### Your monthly investment budget')
         c1,c2,c3=st.columns(3); c1.metric('Current monthly surplus',f"₹{max(0,profile.get('income',0)-profile.get('expenses',0)-profile.get('debt_payment',0)):,.0f}"); c2.metric('Requested goal contributions',f"₹{sum(float(g.get('monthly_contribution',0)) for g in goals):,.0f}"); c3.metric('Current monthly investment budget',f"₹{profile.get('monthly_investment',0):,.0f}")
         surplus=max(0,profile.get('income',0)-profile.get('expenses',0)-profile.get('debt_payment',0)); funded=allocate_household_surplus(goals,min(surplus,profile.get('monthly_investment',surplus)))
         st.dataframe(pd.DataFrame(funded)[['name','target_today','years','monthly_contribution','funded_monthly','funding_ratio','current_corpus']].style.format({'target_today':'₹{:,.0f}','monthly_contribution':'₹{:,.0f}','funded_monthly':'₹{:,.0f}','funding_ratio':'{:.1%}','current_corpus':'₹{:,.0f}'}),hide_index=True,use_container_width=True)
         if sum(g['monthly_contribution'] for g in goals)>min(surplus,profile.get('monthly_investment',surplus)):
             st.warning('Requested contributions exceed the shared investment budget. Contributions are scaled pro-rata; increase the budget, reduce targets or extend goal dates.')
-        st.markdown('#### Career-adjusted household cash-flow scenarios')
+        st.markdown('#### How your income could change over time')
         years_view=st.slider('Projection horizon (years)',1,30,15)
         paths=[]
         for scen in ['conservative','base','optimistic']:
@@ -209,7 +289,7 @@ elif page=='Goals & simulations':
             paths.append({'Scenario':scen.title(),'Year':list(range(years_view+1))[-1],'Monthly income at horizon':vals[-1]})
         st.dataframe(pd.DataFrame(paths).style.format({'Monthly income at horizon':'₹{:,.0f}'}),hide_index=True,use_container_width=True)
         st.line_chart(pd.DataFrame({'Conservative':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'conservative'),'Base':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'base'),'Optimistic':salary_path(profile.get('income',0),profile.get('income_growth',.06),years_view,'optimistic')}))
-        st.markdown('#### Correlated household Monte Carlo')
+        st.markdown('#### Chance of reaching each goal')
         base_return=float((analysis or {}).get('expected_return',0.08))
         base_vol=float((analysis or {}).get('volatility',0.12))
         try:
@@ -232,10 +312,11 @@ elif page=='Goals & simulations':
                 c2.metric('Goals funded monthly',f"₹{multi['funded_total']:,.0f}")
                 c3.metric('Joint simulation paths',f"{multi['joint_simulations']:,}")
                 st.dataframe(
-                    goal_results[['name','years','inflation_adjusted_target','funded_monthly','annual_return_assumption','volatility_assumption','goal_probability','p10','median','p90','status']].style.format({
-                        'inflation_adjusted_target':'₹{:,.0f}','funded_monthly':'₹{:,.0f}',
-                        'annual_return_assumption':'{:.1%}','volatility_assumption':'{:.1%}',
-                        'goal_probability':'{:.1%}','p10':'₹{:,.0f}','median':'₹{:,.0f}','p90':'₹{:,.0f}'
+                    goal_results[['name','years','inflation_adjusted_target','funded_monthly','required_monthly_at_assumed_return','goal_probability','p10','median','p90','status']].rename(columns={
+                        'name':'Goal','years':'Years left','inflation_adjusted_target':'Target at goal date','funded_monthly':'Monthly amount allocated','required_monthly_at_assumed_return':'Estimated monthly amount needed','goal_probability':'Chance of success','p10':'Lower outcome (10%)','median':'Middle outcome','p90':'Higher outcome (90%)','status':'Current plan'
+                    }).style.format({
+                        'Target at goal date':'₹{:,.0f}','Monthly amount allocated':'₹{:,.0f}','Estimated monthly amount needed':'₹{:,.0f}',
+                        'Chance of success':'{:.1%}','Lower outcome (10%)':'₹{:,.0f}','Middle outcome':'₹{:,.0f}','Higher outcome (90%)':'₹{:,.0f}'
                     }),
                     hide_index=True,use_container_width=True
                 )
@@ -256,8 +337,9 @@ elif page=='Goals & simulations':
 
 
 elif page=='Risk lab':
-    st.title('Risk research lab')
-    st.write('Explore historical tail risk, regime-conditioned scenarios and a walk-forward allocation baseline. Results depend on the selected historical sample and are not forecasts.')
+    st.title('Portfolio risk and stress testing')
+    st.write('Explore how your investments behaved in past market declines, how outcomes may vary and how a strategy compares with a benchmark.')
+    st.caption('For users who want to understand downside risk in more depth. Historical losses and simulations are estimates, not limits on future losses.')
     if prices.empty or len(prices.columns) < 2:
         st.warning('Build the external price panel and mutual-fund NAV panel to expand empirical coverage.')
     else:
@@ -301,24 +383,38 @@ elif page=='Risk lab':
                     st.caption(result['method']+'. Regimes are descriptive historical clusters; the within-regime distribution is an approximation.')
                 except ValueError as exc:
                     st.info(f'Regime simulation unavailable: {exc}')
+            st.subheader('Walk-forward strategy comparison')
+            cost_bps=st.slider('Assumed transaction cost (basis points per traded notional)',0,100,15,5)
             try:
-                wf=walk_forward_backtest(prices,benchmark=benchmark,lookback=252,rebalance_every=21)
+                wf=walk_forward_compare(prices,benchmark=benchmark,lookback=252,rebalance_every=21,transaction_cost_bps=float(cost_bps))
                 rows=[]
-                for label,key in [('Optimised portfolio','portfolio_metrics'),('Benchmark','benchmark_metrics')]:
-                    m=wf[key]
-                    rows.append({'Series':label,'CAGR':m['cagr'],'Volatility':m['volatility'],'Maximum drawdown':m['max_drawdown'],'Total return':m['total_return']})
-                st.subheader('Walk-forward baseline')
-                st.dataframe(pd.DataFrame(rows).style.format({k:'{:.2%}' for k in ['CAGR','Volatility','Maximum drawdown','Total return']}),hide_index=True,use_container_width=True)
-                st.caption(f"Out-of-sample window: {wf['out_of_sample_start']} to {wf['out_of_sample_end']}. Walk-forward minimum-variance baseline; no taxes, exit loads or transaction costs.")
+                for label,key in [('Optimised portfolio (net of estimated costs)','optimised'),('Equal-weight assets','equal_weight'),('Buy-and-hold benchmark','benchmark')]:
+                    m=wf['metrics'][key]
+                    rows.append({'Strategy':label,'CAGR':m['cagr'],'Volatility':m['annual_volatility'],'Sharpe (rf=0)':m['sharpe_zero_rf'],'Sortino (rf=0)':m['sortino_zero_rf'],'Maximum drawdown':m['max_drawdown'],'Calmar':m['calmar'],'Total return':m['total_return']})
+                st.dataframe(pd.DataFrame(rows).style.format({k:'{:.2f}' for k in ['Sharpe (rf=0)','Sortino (rf=0)','Calmar']}).format({k:'{:.2%}' for k in ['CAGR','Volatility','Maximum drawdown','Total return']}),hide_index=True,use_container_width=True)
+                st.metric('Average one-way turnover per rebalance',f"{wf['average_one_way_turnover']:.1%}")
+                st.caption(f"Out-of-sample: {wf['out_of_sample_start']} to {wf['out_of_sample_end']} · {wf['metrics']['optimised']['observations']:,} aligned daily observations. {wf['method']}. Costs are user assumptions; tax, slippage, exit loads and liquidity impact are not included.")
+                st.line_chart((1+wf['returns']).cumprod(),use_container_width=True)
+                with st.expander('Inspect rebalance weights'):
+                    st.dataframe(wf['rebalance_log'],hide_index=True,use_container_width=True)
             except ValueError as exc:
-                st.info(f'Walk-forward backtest unavailable: {exc}')
+                st.info(f'Walk-forward comparison unavailable: {exc}')
 
 elif page=='Tax intelligence':
-    st.title('Tax intelligence')
-    st.write('Compare both tax regimes against your salary and eligible deductions before choosing. The calculation is a simplified salary-only estimate for Tax Year 2026-27.')
+    st.title('Tax planning')
+    st.write('Compare the old and new income-tax regimes using your income and eligible deductions. The estimate is simplified and uses the tax assumptions shown below for Tax Year 2026-27.')
     st.warning('Not a tax return or CA opinion. It excludes surcharge, marginal relief, capital gains, special-rate income, HRA and several individual deductions. Verify eligibility and current law before acting.')
     gross=st.number_input('Annual gross salary (₹)',0,100000000,int(profile.get('income',0)*12),step=50000)
-    deductions=st.number_input('Old-regime eligible deductions / exemptions aggregate (₹)',0,10000000, min(500000,int(profile.get('existing_80c',0)+0)),step=10000,help='Enter only amounts you have verified as eligible: e.g. 80C, 80D, eligible HRA and home-loan interest, subject to their separate limits and rules.')
+    with st.expander('Understand the tax regimes and Section 80C'):
+        st.markdown('**New tax regime**')
+        st.write('Uses its own income-tax slab rates and allows fewer deductions. It may suit people who do not claim many deductions.')
+        st.markdown('**Old tax regime**')
+        st.write('Uses different slab rates and allows specified deductions and exemptions when eligibility rules are met. It may suit people with substantial eligible deductions.')
+        st.markdown('**What is Section 80C?**')
+        st.write('Section 80C allows eligible taxpayers using the old regime to deduct specified investments and payments from taxable income. The combined annual limit is generally ₹1.5 lakh, subject to the applicable rules.')
+        st.write('Examples include eligible EPF contributions, PPF, ELSS tax-saving mutual funds, life-insurance premiums, NSC and certain tuition-fee or home-loan principal payments. Each has separate conditions, lock-ins or documentation requirements.')
+        st.info('A deduction is not a cash refund. A ₹50,000 eligible deduction reduces taxable income by ₹50,000; the tax saved depends on the applicable tax rate. The usual 80C deduction is generally unavailable under the new regime.')
+    deductions=st.number_input('Total eligible deductions and exemptions under the old regime (₹)',0,10000000, min(500000,int(profile.get('existing_80c',0))),step=10000,help='Enter the total amount you expect to be eligible to claim under the old regime. Do not count a payment twice. Section 80C has a combined annual limit of generally ₹1.5 lakh; other deductions have separate rules.')
     other=st.number_input('Other ordinary taxable income (₹)',0,100000000,0,step=10000)
     comp=compare_regimes(gross,deductions,other)
     c1,c2,c3=st.columns(3); c1.metric('Estimated new-regime tax',f"₹{comp['new']['tax_including_cess']:,.0f}"); c2.metric('Estimated old-regime tax',f"₹{comp['old']['tax_including_cess']:,.0f}"); c3.metric('Lower estimate',comp['recommended'],delta=f"₹{comp['difference']:,.0f} lower")
@@ -391,6 +487,20 @@ elif page=='Market intelligence':
     if not prices.empty:
         st.line_chart((1+prices).cumprod(),height=280)
         st.dataframe(pd.DataFrame([{'Series':c,'Observations':prices[c].count(),'Start':str(prices[c].dropna().index.min().date()),'End':str(prices[c].dropna().index.max().date()),'Evidence':'Historical ETF price series' if c in ['Nifty 50 ETF','Gold ETF'] else 'Downloaded proxy; see manifest'} for c in prices.columns]),hide_index=True,use_container_width=True)
+    with st.expander('Run bundled price-data quality checks',expanded=True):
+        audit_rows=[]
+        for label,filename in [('Nifty 50 ETF','nifty50_historical.csv'),('Gold ETF','goldbees_historical.csv')]:
+            try:
+                raw=pd.read_csv(ROOT/'data'/filename)
+                audit=audit_price_frame(raw,date_col='Date',value_col='close')
+                audit_rows.append({'Series':label,**{k:audit[k] for k in ['rows','invalid_dates','invalid_numeric_values','non_positive_values','duplicate_date_rows','out_of_order_steps','passes_basic_checks']}})
+            except (OSError,ValueError,KeyError) as exc:
+                audit_rows.append({'Series':label,'audit_error':str(exc)})
+        st.dataframe(pd.DataFrame(audit_rows),hide_index=True,use_container_width=True)
+        st.caption('These checks detect structural defects; they do not certify adjusted prices, total-return completeness, survivorship-bias control or source accuracy.')
+    with st.expander('Point-in-time research policy'):
+        st.write('For event-driven or fundamental research, features must be joined using their publication/availability timestamp, not only the economic observation date. Records with unknown availability timestamps are excluded by the research utility.')
+        st.code('from engine.data_quality import point_in_time_filter\nknown_at_decision = point_in_time_filter(events, as_of="2024-03-31", available_at_col="available_at")',language='python')
     if regime.get('latest'): st.write('Latest regime features'); st.json(regime['latest'])
     st.markdown('#### Data limitations')
     st.write('- Bundled Nifty 50 ETF and Gold ETF data: 2020–2025, 1,486 observations each. These are ETF price histories, not a 20-year Nifty TRI dataset.')

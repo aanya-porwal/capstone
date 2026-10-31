@@ -18,15 +18,17 @@ def load_prices():
         if path.exists():
             d=pd.read_csv(path); d['Date']=pd.to_datetime(d['Date']); d['close']=pd.to_numeric(d['close'],errors='coerce')
             s=d.dropna(subset=['Date','close']).drop_duplicates('Date').set_index('Date')['close'].sort_index()
-            series[name]=s.pct_change().dropna()
+            series[name]=s.pct_change(fill_method=None).dropna()
     extra=ROOT/'data/prices'
     if extra.exists():
-        for path in extra.glob('*.csv'):
+        # Load raw price files first and distribution-adjusted proxies last so a
+        # proxy with the same canonical asset name takes precedence deterministically.
+        for path in sorted(extra.glob('*.csv'), key=lambda p: ('total_return_proxy' in p.stem, p.name)):
             try:
                 d=pd.read_csv(path); datecol='Date' if 'Date' in d else 'date'; pricecol='Close' if 'Close' in d else ('close' if 'close' in d else 'NAV')
                 d[datecol]=pd.to_datetime(d[datecol]); s=pd.to_numeric(d[pricecol],errors='coerce'); s.index=d[datecol]
                 aliases={'nifty_50_etf':'Nifty 50 ETF','nifty_next_50_etf':'Nifty Next 50 ETF','nifty_midcap_etf':'Nifty Midcap ETF','gold_etf':'Gold ETF','liquid_fund_proxy':'Liquid Fund','gilt_etf_proxy':'Government Bond','s_p_500_etf_proxy':'International Equity','nifty_500_etf_proxy':'Nifty 500 ETF proxy','nifty_bank_etf_proxy':'Nifty Bank ETF proxy','bharat_bond_etf_proxy':'Bharat Bond ETF proxy','nifty_100_index_proxy':'Nifty 100 Index Proxy','nifty_200_index_proxy':'Nifty 200 Index Proxy','nifty_500_index_proxy':'Nifty 500 Index Proxy','nifty_bank_index_proxy':'Nifty Bank Index Proxy','nifty_it_index_proxy':'Nifty IT Index Proxy','nifty_pharma_index_proxy':'Nifty Pharma Index Proxy','nifty_midcap_50_index_proxy':'Nifty Midcap 50 Index Proxy','sensex_index_proxy':'Sensex Index Proxy','gold_bees_etf_price':'Gold BeES ETF Price','embassy_reit_price':'Embassy REIT Price','mindspace_reit_price':'Mindspace REIT Price','brookfield_reit_price':'Brookfield India REIT Price','nexus_select_trust_price':'Nexus Select Trust Price','indigrid_invit_price':'IndiGrid InvIT Price','irb_invit_price':'IRB InvIT Price','powergrid_invit_price':'PowerGrid InvIT Price','gold_bees_etf_price':'Gold BeES ETF Price','embassy_reit_price':'Embassy REIT Price','embassy_reit_price_total_return_proxy':'Embassy REIT Price','mindspace_reit_price':'Mindspace REIT Price','mindspace_reit_price_total_return_proxy':'Mindspace REIT Price','brookfield_reit_price':'Brookfield India REIT Price','brookfield_reit_price_total_return_proxy':'Brookfield India REIT Price','nexus_select_trust_price':'Nexus Select Trust Price','nexus_select_trust_price_total_return_proxy':'Nexus Select Trust Price','indigrid_invit_price':'IndiGrid InvIT Price','indigrid_invit_price_total_return_proxy':'IndiGrid InvIT Price','irb_invit_price':'IRB InvIT Price','irb_invit_price_total_return_proxy':'IRB InvIT Price','powergrid_invit_price':'PowerGrid InvIT Price','powergrid_invit_price_total_return_proxy':'PowerGrid InvIT Price'}
-                series[aliases.get(path.stem,path.stem)]=s.sort_index().pct_change().dropna()
+                series[aliases.get(path.stem,path.stem)]=s.sort_index().pct_change(fill_method=None).dropna()
             except Exception: pass
     # Selected Direct Growth mutual-fund NAVs are expense-net NAV total-return proxies.
     mf_panel = ROOT/'data/mutual_fund_nav'/'selected_nav_panel.csv'
@@ -129,8 +131,17 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
     if horizon<=3: equity_cap=min(equity_cap,.20); risk_cap=min(risk_cap,.07)
     elif horizon<=5: equity_cap=min(equity_cap,.40); risk_cap=min(risk_cap,.10)
     bounds=[]
-    for _,a in assets.iterrows():
+    asset_names=assets['asset'].astype(str).str.lower()
+    # A mutual-fund scheme is a vehicle, not a separate source of diversification.
+    # Cap each selected fund and constrain concentrated equity styles in aggregate.
+    mf_mask=asset_names.str.contains(r'\b(direct plan|growth option|growth)\b',regex=True).to_numpy()
+    smallcap_idx=asset_names.str.contains(r'small\s*cap|smallcap',regex=True).to_numpy()
+    midcap_idx=asset_names.str.contains(r'mid\s*cap|midcap',regex=True).to_numpy()
+    sector_idx=asset_names.str.contains(r'sector|thematic|pharma|banking|technology|infrastructure',regex=True).to_numpy()
+    largecap_idx=asset_names.str.contains(r'large\s*cap|largecap',regex=True).to_numpy()
+    for i,(_,a) in enumerate(assets.iterrows()):
         cap=.35 if 'equity' in a['class'].lower() else (.30 if a['asset']!='Gold ETF' else .20)
+        if mf_mask[i]: cap=min(cap,.10)
         if a['asset']=='Fixed Deposit': cap=.50
         if a['asset']=='Liquid Fund': cap=.35
         if a['asset']=='International Equity': cap=.20
@@ -140,6 +151,25 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
         bounds.append((0,cap))
     eq_idx=np.array(['equity' in x.lower() for x in assets['class']]); gold_idx=np.array(assets['class']=='Gold')
     tax_idx=np.array(assets['asset'].isin(['ELSS','PPF']))
+    # Concentration guardrails are applied to underlying exposure, not just
+    # individual product names. The limits tighten for shorter horizons and
+    # lower risk scores; they are model controls, not universal advice.
+    smallcap_limit=float(np.interp(risk_score,[0,30,60,100],[.03,.07,.12,.15]))
+    midcap_limit=float(np.interp(risk_score,[0,30,60,100],[.05,.10,.16,.20]))
+    thematic_limit=float(np.interp(risk_score,[0,30,60,100],[.02,.05,.08,.10]))
+    if horizon<=3:
+        smallcap_limit=min(smallcap_limit,.03)
+        midcap_limit=min(midcap_limit,.05)
+        thematic_limit=min(thematic_limit,.02)
+    elif horizon<=5:
+        smallcap_limit=min(smallcap_limit,.05)
+        midcap_limit=min(midcap_limit,.08)
+        thematic_limit=min(thematic_limit,.04)
+    style_constraints=[
+        {'type':'ineq','fun':lambda w, m=smallcap_idx, cap=smallcap_limit: cap-w[m].sum()},
+        {'type':'ineq','fun':lambda w, m=midcap_idx, cap=midcap_limit: cap-w[m].sum()},
+        {'type':'ineq','fun':lambda w, m=sector_idx, cap=thematic_limit: cap-w[m].sum()},
+    ]
     tax_headroom=max(0,150000-float(existing_80c)) if tax_regime=='Old' else 0.0
     tax_monthly_cap=min(1.0,tax_headroom/max(monthly_budget*12,1)) if tax_regime=='Old' else 0.0
     def stats(w): return float(w@mu),float(np.sqrt(max(w@cov@w,0)))
@@ -151,7 +181,7 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
             return float(np.sum((rc-rc.mean())**2))
         # robust return-risk utility with downside-risk proxy
         return -(ret-.55*risk**2)
-    cons=[{'type':'eq','fun':lambda w:w.sum()-1},{'type':'ineq','fun':lambda w:equity_cap-w[eq_idx].sum()},{'type':'ineq','fun':lambda w:risk_cap-stats(w)[1]}]
+    cons=[{'type':'eq','fun':lambda w:w.sum()-1},{'type':'ineq','fun':lambda w:equity_cap-w[eq_idx].sum()},{'type':'ineq','fun':lambda w:risk_cap-stats(w)[1]}]+style_constraints
     if tax_regime=='Old': cons.append({'type':'ineq','fun':lambda w:tax_monthly_cap-w[tax_idx].sum()})
     x0=np.ones(n)/n
     res=minimize(obj,x0,method='SLSQP',bounds=bounds,constraints=cons,options={'maxiter':1200,'ftol':1e-10})
@@ -163,7 +193,7 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
         fallback_used=True
         solver_mode='minimum_variance_fallback_without_risk_cap'
         fallback_cons=[{'type':'eq','fun':lambda w:w.sum()-1},
-                       {'type':'ineq','fun':lambda w:equity_cap-w[eq_idx].sum()}]
+                       {'type':'ineq','fun':lambda w:equity_cap-w[eq_idx].sum()}]+style_constraints
         if tax_regime=='Old':
             fallback_cons.append({'type':'ineq','fun':lambda w:tax_monthly_cap-w[tax_idx].sum()})
         res=minimize(lambda w: w@cov@w,x0,method='SLSQP',bounds=bounds,
@@ -178,12 +208,17 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
     tax_cap_satisfied=bool(tax_regime!='Old' or tax_weight<=tax_monthly_cap+tolerance)
     contributions=w*(cov@w)/max(risk,1e-12)
     result=assets[['asset','class','evidence']].copy(); result['weight']=w; result['monthly_amount']=w*monthly_budget; result['risk_contribution']=contributions
-    result=result[result.weight>.002].sort_values('weight',ascending=False)
+    # Keep every positive portfolio position in the returned allocation. Filtering
+    # small weights here makes the reported weights sum to less than one and causes
+    # downstream goal plans to understate invested capital.
+    result=result[result.weight>1e-10].sort_values('weight',ascending=False)
     return {'allocation':result,'expected_return':ret,'volatility':risk,
             'equity_weight':equity_weight,'tax_weight':tax_weight,
             'risk_cap':risk_cap,'risk_cap_satisfied':risk_cap_satisfied,
             'risk_constraint_relaxed':bool(not risk_cap_satisfied),
             'equity_cap':equity_cap,'equity_cap_satisfied':equity_cap_satisfied,
+            'concentration_limits':{'individual_mutual_fund':.10,'small_cap':smallcap_limit,'mid_cap':midcap_limit,'sector_thematic':thematic_limit},
+            'concentration_satisfied':bool(w[smallcap_idx].sum()<=smallcap_limit+tolerance and w[midcap_idx].sum()<=midcap_limit+tolerance and w[sector_idx].sum()<=thematic_limit+tolerance and all(w[mf_mask]<=.10+tolerance)),
             'tax_regime':tax_regime,'tax_deduction_monthly_cap':tax_monthly_cap,
             'tax_cap_satisfied':tax_cap_satisfied,
             'solver_mode':solver_mode,'fallback_used':fallback_used,

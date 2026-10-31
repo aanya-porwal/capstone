@@ -9,7 +9,8 @@ def scenario_data(n=600):
     rng = np.random.default_rng(812)
     dates = pd.bdate_range("2020-01-01", periods=n)
     equity = rng.normal(.0005, .015, n)
-    equity[[100, 240, 410]] -= .12
+    shock_indices = [i for i in (100, 240, 410) if i < n]
+    equity[shock_indices] -= .12
     gold = rng.normal(.00025, .007, n)
     debt = rng.normal(.00018, .002, n)
     return pd.DataFrame({"Equity ETF": equity, "Gold ETF": gold,
