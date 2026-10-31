@@ -52,7 +52,7 @@ def load_index(symbol: str = "NIFTY_50", root: str | Path | None = None) -> pd.D
     if not symbol.replace("_", "").isalnum():
         raise ValueError("Invalid index symbol")
     df = read_table(f"data/INDICES/{symbol}.parquet", root)
-    return normalise_market_frame(df)
+    return normalise_market_frame(df, source_id=f"index:{symbol}")
 
 
 def load_listed_security(symbol: str, exchange: str = "NSE",
@@ -63,11 +63,14 @@ def load_listed_security(symbol: str, exchange: str = "NSE",
     if not symbol.replace("_", "").isalnum() or exchange not in {"NSE", "BSE"}:
         raise ValueError("Use an alphanumeric symbol and exchange NSE or BSE")
     suffix = "NS" if exchange == "NSE" else "BO"
-    return normalise_market_frame(read_table(f"data/{exchange}/{symbol}_{suffix}.parquet", root))
+    return normalise_market_frame(
+        read_table(f"data/{exchange}/{symbol}_{suffix}.parquet", root),
+        source_id=f"security:{exchange}:{symbol}",
+    )
 
 
-def normalise_market_frame(df: pd.DataFrame) -> pd.DataFrame:
-    """Standardise common OHLCV/index layouts without inventing missing fields."""
+def normalise_market_frame(df: pd.DataFrame, source_id: str | None = None) -> pd.DataFrame:
+    """Standardise market data and apply narrowly scoped, documented source fixes."""
     out = df.copy()
     out.columns = [str(c).strip() for c in out.columns]
     if "Date" not in out.columns:
@@ -88,6 +91,40 @@ def normalise_market_frame(df: pd.DataFrame) -> pd.DataFrame:
     out = out.drop_duplicates("Date", keep="last").reset_index(drop=True)
     if "close" in out:
         out = out[out["close"].gt(0)]
+
+    # Source-specific corrections: retain the raw external Parquet files
+    # unchanged, but prevent known vendor artefacts entering return histories.
+    corrections = []
+    invalid_dates = {
+        "security:BSE:GOLDBEES": {
+            "dates": ["2019-12-19", "2019-12-20"],
+            "reason": (
+                "Vendor price discontinuity: close collapses from ~33.60 to "
+                "~0.336 and rebounds to ~33.61; no split/dividend is recorded."
+            ),
+        },
+        "index:NIFTY_MIDCAP_50": {
+            "dates": ["2007-09-24"],
+            "reason": (
+                "Zero-volume initial placeholder level of exactly 1000; "
+                "next observed index level is 2796.10."
+            ),
+        },
+    }
+    rule = invalid_dates.get(source_id)
+    if rule:
+        dates = pd.to_datetime(rule["dates"])
+        before = len(out)
+        out = out.loc[~out["Date"].isin(dates)].copy()
+        removed = before - len(out)
+        corrections.append({
+            "source_id": source_id,
+            "excluded_dates": rule["dates"],
+            "rows_removed": int(removed),
+            "reason": rule["reason"],
+            "raw_source_preserved": True,
+        })
+    out.attrs["quality_corrections"] = corrections
     return out
 
 
