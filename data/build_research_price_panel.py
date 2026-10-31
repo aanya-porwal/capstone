@@ -61,6 +61,7 @@ def main():
             "start_date": str(data.Date.min().date()),
             "end_date": str(data.Date.max().date()),
             "return_status": "price return only; distributions/TRI not established",
+            "quality_corrections": frame.attrs.get("quality_corrections", []),
         })
 
     for name, (symbol, slug) in INDEXES.items():
@@ -114,7 +115,7 @@ def main():
     manifest = {
         "source_repository": "https://github.com/aswinv90/indian-market-historical-data",
         "source_root": str(get_research_root(args.root)),
-        "method": "Daily close-level returns; for listed trusts, a separate distribution-adjusted proxy is emitted only when parseable dividend/distribution events are available. Index TRI status remains unverified.",
+        "method": "Daily close-level returns; source-specific known bad observations are excluded by engine.research_data and recorded per asset. For listed trusts, a separate distribution-adjusted proxy is emitted only when parseable dividend/distribution events are available. Index TRI status remains unverified.",
         "assets": rows,
     }
     (outdir / "research_price_manifest.json").write_text(
