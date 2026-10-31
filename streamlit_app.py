@@ -115,7 +115,7 @@ def make_analysis(p):
     goal=float(p.get('goal_amount',0)); current=float(p.get('current_savings',0)); inflation=float(p.get('goal_inflation',.06))
     future_goal=goal*((1+inflation)**horizon)
     sim=bootstrap_goal(current,monthly,horizon,future_goal,opt,prices,simulations=5000)
-    return {'expected_return':opt['expected_return'],'volatility':opt['volatility'],'future_goal':future_goal,'goal_inflation':inflation,'equity_weight':opt['equity_weight'],'allocation':opt['allocation'].to_dict('records'),'goal_simulation':{k:v for k,v in sim.items() if k!='final_values'},'regime':regime['label'],'evidence':{r['asset']:r['evidence'] for _,r in ASSETS.iterrows()},'diagnostics':{'equity_cap':opt['equity_cap'],'risk_cap':opt['risk_cap'],'solver_success':opt['solver_success']}}
+    return {'expected_return':opt['expected_return'],'volatility':opt['volatility'],'future_goal':future_goal,'goal_inflation':inflation,'equity_weight':opt['equity_weight'],'allocation':opt['allocation'].to_dict('records'),'goal_simulation':{k:v for k,v in sim.items() if k!='final_values'},'regime':regime['label'],'evidence':{r['asset']:r['evidence'] for _,r in ASSETS.iterrows()},'diagnostics':{'equity_cap':opt['equity_cap'],'risk_cap':opt['risk_cap'],'solver_success':opt['solver_success'],'fallback_used':opt['fallback_used'],'solver_mode':opt['solver_mode'],'concentration_limits':opt['concentration_limits'],'concentration_satisfied':opt['concentration_satisfied'],'risk_cap_satisfied':opt['risk_cap_satisfied'],'tax_cap_satisfied':opt['tax_cap_satisfied']}}
 if all(k in profile for k in ['monthly_investment','risk_score','goal_years','goal_amount']):
     try:
         analysis=make_analysis(profile); save_recommendation(uid,analysis)
@@ -153,8 +153,22 @@ if page=='Overview':
         alloc=pd.DataFrame(a.get('allocation',[]))
         if not alloc.empty:
             col1,col2=st.columns([1,1.2])
-            with col1: st.plotly_chart(px.pie(alloc,names='asset',values='weight',hole=.55),use_container_width=True)
-            with col2: st.dataframe(alloc[['asset','weight','monthly_amount','evidence']].style.format({'weight':'{:.1%}','monthly_amount':'₹{:,.0f}'}),hide_index=True,use_container_width=True)
+            fig=px.pie(alloc,names='asset',values='weight',hole=.62)
+            fig.update_traces(textposition='inside',textinfo='percent',hovertemplate='%{label}<br>Allocation: %{percent}<extra></extra>')
+            fig.update_layout(height=390,margin=dict(l=12,r=12,t=16,b=12),legend=dict(orientation='h',yanchor='bottom',y=-.22,x=0),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+            with col1: st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
+            with col2:
+                display=alloc[['asset','weight','monthly_amount','evidence']].copy()
+                display['weight']=display['weight'].map(lambda x:f'{x:.1%}')
+                display['monthly_amount']=display['monthly_amount'].map(lambda x:f'₹{x:,.0f}')
+                st.dataframe(display,hide_index=True,use_container_width=True)
+            d=(a.get('diagnostics') or {})
+            if d.get('fallback_used'):
+                st.warning('The requested risk constraint was infeasible. The optimiser used its minimum-variance fallback; review the reported risk before relying on this allocation.')
+            if not d.get('concentration_satisfied',True):
+                st.error('The resulting allocation breaches one or more diversification guardrails. Do not treat it as a suitable portfolio.')
+            limits=d.get('concentration_limits',{})
+            st.caption(f"Concentration guardrails: individual mutual fund ≤ {limits.get('individual_mutual_fund',0):.0%}; small-cap ≤ {limits.get('small_cap',0):.0%}; mid-cap ≤ {limits.get('mid_cap',0):.0%}; sector/thematic ≤ {limits.get('sector_thematic',0):.0%}.")
     st.caption('Prototype notice: no brokerage connectivity, trade execution or regulated investment advice. Assumptions and proxy data are disclosed in Market intelligence.')
 
 elif page=='My financial profile':
