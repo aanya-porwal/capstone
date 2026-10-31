@@ -152,16 +152,30 @@ if page=='Overview':
         st.subheader('Your proposed allocation')
         alloc=pd.DataFrame(a.get('allocation',[]))
         if not alloc.empty:
-            col1,col2=st.columns([1,1.2])
-            fig=px.pie(alloc,names='asset',values='weight',hole=.62)
-            fig.update_traces(textposition='inside',textinfo='percent',hovertemplate='%{label}<br>Allocation: %{percent}<extra></extra>')
-            fig.update_layout(height=390,margin=dict(l=12,r=12,t=16,b=12),legend=dict(orientation='h',yanchor='bottom',y=-.22,x=0),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
-            with col1: st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
-            with col2:
-                display=alloc[['asset','weight','monthly_amount','evidence']].copy()
-                display['weight']=display['weight'].map(lambda x:f'{x:.1%}')
-                display['monthly_amount']=display['monthly_amount'].map(lambda x:f'₹{x:,.0f}')
-                st.dataframe(display,hide_index=True,use_container_width=True)
+            # A horizontal ranking chart remains readable with many holdings;
+            # a donut legend becomes unusable once the portfolio has several funds.
+            chart=alloc.sort_values('weight',ascending=True).copy()
+            chart['weight_pct']=chart['weight']*100
+            chart['monthly_label']=chart['monthly_amount'].map(lambda x:f'₹{x:,.0f}/mo')
+            fig=px.bar(chart,x='weight_pct',y='asset',orientation='h',text=chart['weight'].map(lambda x:f'{x:.1%}'),
+                       custom_data=['monthly_label','evidence'])
+            fig.update_traces(marker_color='#26745A',textposition='outside',cliponaxis=False,
+                              hovertemplate='<b>%{y}</b><br>Allocation: %{x:.1f}%<br>Contribution: %{customdata[0]}<br>Evidence: %{customdata[1]}<extra></extra>')
+            fig.update_layout(height=max(300, min(680, 58*len(chart)+100)),
+                              margin=dict(l=8,r=75,t=12,b=12),showlegend=False,
+                              xaxis=dict(title='Portfolio weight',ticksuffix='%',rangemode='tozero',showgrid=True,gridcolor='rgba(120,130,140,.18)'),
+                              yaxis=dict(title='',automargin=True,tickfont=dict(size=12)),
+                              paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
+            display=alloc[['asset','weight','monthly_amount','evidence']].copy()
+            display.columns=['Investment','Weight','Monthly contribution','Data basis']
+            st.dataframe(display,hide_index=True,use_container_width=True,height=min(440, 42+len(display)*36),
+                         column_config={
+                             'Investment':st.column_config.TextColumn(width='large'),
+                             'Weight':st.column_config.ProgressColumn(format='%.1f%%',min_value=0,max_value=1),
+                             'Monthly contribution':st.column_config.NumberColumn(format='₹%.0f',width='medium'),
+                             'Data basis':st.column_config.TextColumn(width='medium')
+                         })
             d=(a.get('diagnostics') or {})
             if d.get('fallback_used'):
                 st.warning('The requested risk constraint was infeasible. The optimiser used its minimum-variance fallback; review the reported risk before relying on this allocation.')
