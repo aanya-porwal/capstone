@@ -25,12 +25,38 @@ st.set_page_config(page_title='DWMS | Personal Wealth Intelligence',page_icon='�
 init_db()
 st.markdown('''<style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
-html,body,[class*="css"]{font-family:'DM Sans',sans-serif} h1,h2,h3{font-family:'Manrope',sans-serif;letter-spacing:-.03em}
-.block-container{padding-top:1.5rem;max-width:1440px}.stMetric{background:#18263a!important;padding:15px;border-radius:12px;border:1px solid #34445b!important}.stMetric label,.stMetric [data-testid='stMetricLabel'],.stMetric [data-testid='stMetricValue']{color:#f4f7fb!important}.stMetric [data-testid='stMetricDelta']{color:#c8d7e8!important}
-[data-testid="stSidebar"]{background:#101a2b} [data-testid="stSidebar"] *{color:#eef3fb!important}
-div[data-testid="stChatMessage"]{border:1px solid #e8edf3;border-radius:12px;padding:10px}
-.small-muted{color:#778397;font-size:12px}.hero{background:linear-gradient(115deg,#13253f,#24466a);color:white;padding:25px 28px;border-radius:18px;margin-bottom:20px}
-.hero h1{color:white;margin:0}.hero p{color:#d4e2f1;margin:6px 0 0}
+:root{--dwms-bg:#f5f6f3;--dwms-surface:#ffffff;--dwms-ink:#17251f;--dwms-muted:#718078;--dwms-line:#e3e9e4;--dwms-green:#1f6b50;--dwms-green-soft:#eaf3ee;--dwms-gold:#b58b4b}
+html,body,[class*="css"]{font-family:'DM Sans',sans-serif;color:var(--dwms-ink)}
+.stApp{background:var(--dwms-bg)}
+.block-container{max-width:1320px;padding:2.2rem 3rem 4rem}
+h1,h2,h3,h4{font-family:'Manrope',sans-serif!important;color:var(--dwms-ink)!important;letter-spacing:-.035em}
+h1{font-size:2.15rem!important;font-weight:750!important;line-height:1.15!important;margin:0 0 .45rem!important}
+h2{font-size:1.5rem!important;font-weight:700!important}
+h3{font-size:1.12rem!important;font-weight:700!important}
+h4{font-size:1rem!important;font-weight:700!important}
+p,li,label,.stMarkdown{color:var(--dwms-ink)}
+[data-testid="stCaptionContainer"],.small-muted{color:var(--dwms-muted)!important}
+[data-testid="stSidebar"]{background:#17251f;border-right:1px solid #263a31}
+[data-testid="stSidebar"] *{color:#f2f5f1!important}
+[data-testid="stSidebar"] [data-testid="stRadio"] label{padding:.42rem .55rem;border-radius:9px;font-weight:500}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:#263b31}
+[data-testid="stSidebar"] [data-testid="stRadio"] [aria-checked="true"]{background:#29483a;border-radius:9px}
+[data-testid="stMetric"]{background:var(--dwms-surface);border:1px solid var(--dwms-line);border-radius:14px;padding:1.05rem 1.2rem;box-shadow:0 2px 8px rgba(22,45,33,.035)}
+[data-testid="stMetricLabel"]{font-size:.78rem!important;font-weight:600!important;color:var(--dwms-muted)!important}
+[data-testid="stMetricValue"]{font-family:'Manrope',sans-serif!important;font-size:1.75rem!important;font-weight:700!important;color:var(--dwms-ink)!important}
+[data-testid="stMetricDelta"]{font-size:.78rem!important}
+div[data-testid="stVerticalBlockBorderWrapper"]{border-color:var(--dwms-line)!important;border-radius:14px}
+.stButton>button,[data-testid="stFormSubmitButton"] button{border-radius:9px;font-weight:600;min-height:2.65rem}
+.stButton>button[kind="primary"],[data-testid="stFormSubmitButton"] button[kind="primary"]{background:var(--dwms-green);border-color:var(--dwms-green)}
+.stTextInput input,.stNumberInput input,.stSelectbox [data-baseweb="select"],.stTextArea textarea{border-radius:9px}
+hr{border-color:var(--dwms-line)!important}
+div[data-testid="stChatMessage"]{background:var(--dwms-surface);border:1px solid var(--dwms-line);border-radius:14px;padding:1rem}
+.hero{background:linear-gradient(115deg,#183c2e,#28654d);color:#fff;padding:2rem 2.2rem;border-radius:18px;margin:0 0 1.5rem;box-shadow:0 8px 24px rgba(25,65,47,.10)}
+.hero h1{color:#fff!important;font-size:2rem!important;margin:0!important}
+.hero p{color:#dcebe2!important;margin:.55rem 0 0;font-size:1rem}
+[data-testid="stDataFrame"],[data-testid="stTable"]{border:1px solid var(--dwms-line);border-radius:12px;overflow:hidden}
+[data-testid="stPlotlyChart"]{background:var(--dwms-surface);border:1px solid var(--dwms-line);border-radius:14px;padding:.5rem}
+.js-plotly-plot .plotly .modebar{opacity:.45}
 </style>''',unsafe_allow_html=True)
 
 if 'user' not in st.session_state: st.session_state.user=None
@@ -178,15 +204,27 @@ elif page=='Portfolio strategy':
     else:
         objective=st.selectbox('Optimisation objective',['balanced_utility','min_variance','risk_parity'],format_func=lambda x:{'balanced_utility':'Balanced return-risk utility','min_variance':'Minimum variance','risk_parity':'Risk parity'}[x])
         opt=optimise(prices,int(profile['risk_score']),int(profile['goal_years']),float(profile['monthly_investment']),objective,age=int(profile['age']),tax_regime=profile.get('tax_regime','New'),existing_80c=float(profile.get('existing_80c',0)))
-        df=opt['allocation']; st.metric('Expected annual return (assumption blend)',f"{opt['expected_return']:.2%}"); st.metric('Annualised volatility estimate',f"{opt['volatility']:.2%}")
-        st.plotly_chart(px.bar(df,x='asset',y='weight',color='class',hover_data=['evidence']),use_container_width=True)
-        st.dataframe(df.style.format({'weight':'{:.1%}','monthly_amount':'₹{:,.0f}','risk_contribution':'{:.2%}'}),hide_index=True,use_container_width=True)
-        st.markdown('#### Why these weights?')
+        df=opt['allocation']
+        st.markdown("<div class='small-muted'>YOUR PROPOSED PORTFOLIO</div>",unsafe_allow_html=True)
+        m1,m2,m3=st.columns(3)
+        m1.metric('Expected annual return',f"{opt['expected_return']:.2%}",help='Blended estimate using observed history and labelled assumptions; not a forecast.')
+        m2.metric('Annualised volatility',f"{opt['volatility']:.2%}",help='Estimated annual variability of portfolio returns.')
+        m3.metric('Monthly investment budget',f"₹{float(profile['monthly_investment']):,.0f}")
+        st.markdown("#### Allocation by investment")
+        chart=px.bar(df,x='asset',y='weight',color='class',hover_data=['evidence'],text=df['weight'].map(lambda x:f'{x:.0%}'),color_discrete_sequence=['#2d7658','#b58b4b','#7897a8','#9aaf9f','#c58d70'])
+        chart.update_layout(height=360,margin=dict(l=18,r=18,t=24,b=20),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font=dict(family='DM Sans',color='#26372f'),legend_title_text='',yaxis=dict(title='Portfolio weight',tickformat='.0%',gridcolor='#e7ece8',zeroline=False),xaxis=dict(title='',tickangle=-18),showlegend=True)
+        chart.update_traces(textposition='outside',cliponaxis=False)
+        st.plotly_chart(chart,use_container_width=True,config={'displayModeBar':False})
+        st.markdown("#### Allocation details")
+        display=df.copy()
+        st.dataframe(display.style.format({'weight':'{:.1%}','monthly_amount':'₹{:,.0f}','risk_contribution':'{:.1%}'}),hide_index=True,use_container_width=True)
+        st.markdown("#### Why these weights?")
         rationale=pd.DataFrame(allocation_rationale(df.to_dict('records'),int(profile['goal_years']),int(profile['risk_score'])))
         st.dataframe(rationale[['asset','weight','role','data_quality','suitability']].style.format({'weight':'{:.1%}'}),hide_index=True,use_container_width=True)
-        st.caption('Weights are the result of the selected objective, expected-return priors, covariance estimates, asset caps and risk/equity constraints. The optimiser does not establish that the expected returns are achievable or that a specific fund/ETF is suitable.')
-        st.markdown('#### Model diagnostics'); st.json({'equity_weight':opt['equity_weight'],'equity_cap':opt['equity_cap'],'risk_cap':opt['risk_cap'],'solver_success':opt['solver_success'],'empirical_statistics':opt['empirical']})
-        st.warning('Several assets use prior expected returns, volatility and correlation assumptions. The covariance matrix is positive-semidefinite repaired. This is a prototype optimiser, not a verified investable portfolio.')
+        st.caption('Weights depend on the selected objective, return assumptions, covariance estimates and portfolio constraints. They do not establish that expected returns are achievable or that a specific fund or ETF is suitable.')
+        with st.expander('Model diagnostics'):
+            st.json({'equity_weight':opt['equity_weight'],'equity_cap':opt['equity_cap'],'risk_cap':opt['risk_cap'],'solver_success':opt['solver_success'],'empirical_statistics':opt['empirical']})
+        st.warning('Some asset estimates rely on prior assumptions rather than long, continuous historical series. This is a research prototype, not a verified investable portfolio.')
 
 elif page=='Goals & simulations':
     st.title('Your goals and future plans')
