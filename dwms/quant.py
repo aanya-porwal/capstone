@@ -18,15 +18,17 @@ def load_prices():
         if path.exists():
             d=pd.read_csv(path); d['Date']=pd.to_datetime(d['Date']); d['close']=pd.to_numeric(d['close'],errors='coerce')
             s=d.dropna(subset=['Date','close']).drop_duplicates('Date').set_index('Date')['close'].sort_index()
-            series[name]=s.pct_change().dropna()
+            series[name]=s.pct_change(fill_method=None).dropna()
     extra=ROOT/'data/prices'
     if extra.exists():
-        for path in extra.glob('*.csv'):
+        # Load raw price files first and distribution-adjusted proxies last so a
+        # proxy with the same canonical asset name takes precedence deterministically.
+        for path in sorted(extra.glob('*.csv'), key=lambda p: ('total_return_proxy' in p.stem, p.name)):
             try:
                 d=pd.read_csv(path); datecol='Date' if 'Date' in d else 'date'; pricecol='Close' if 'Close' in d else ('close' if 'close' in d else 'NAV')
                 d[datecol]=pd.to_datetime(d[datecol]); s=pd.to_numeric(d[pricecol],errors='coerce'); s.index=d[datecol]
                 aliases={'nifty_50_etf':'Nifty 50 ETF','nifty_next_50_etf':'Nifty Next 50 ETF','nifty_midcap_etf':'Nifty Midcap ETF','gold_etf':'Gold ETF','liquid_fund_proxy':'Liquid Fund','gilt_etf_proxy':'Government Bond','s_p_500_etf_proxy':'International Equity','nifty_500_etf_proxy':'Nifty 500 ETF proxy','nifty_bank_etf_proxy':'Nifty Bank ETF proxy','bharat_bond_etf_proxy':'Bharat Bond ETF proxy','nifty_100_index_proxy':'Nifty 100 Index Proxy','nifty_200_index_proxy':'Nifty 200 Index Proxy','nifty_500_index_proxy':'Nifty 500 Index Proxy','nifty_bank_index_proxy':'Nifty Bank Index Proxy','nifty_it_index_proxy':'Nifty IT Index Proxy','nifty_pharma_index_proxy':'Nifty Pharma Index Proxy','nifty_midcap_50_index_proxy':'Nifty Midcap 50 Index Proxy','sensex_index_proxy':'Sensex Index Proxy','gold_bees_etf_price':'Gold BeES ETF Price','embassy_reit_price':'Embassy REIT Price','mindspace_reit_price':'Mindspace REIT Price','brookfield_reit_price':'Brookfield India REIT Price','nexus_select_trust_price':'Nexus Select Trust Price','indigrid_invit_price':'IndiGrid InvIT Price','irb_invit_price':'IRB InvIT Price','powergrid_invit_price':'PowerGrid InvIT Price','gold_bees_etf_price':'Gold BeES ETF Price','embassy_reit_price':'Embassy REIT Price','embassy_reit_price_total_return_proxy':'Embassy REIT Price','mindspace_reit_price':'Mindspace REIT Price','mindspace_reit_price_total_return_proxy':'Mindspace REIT Price','brookfield_reit_price':'Brookfield India REIT Price','brookfield_reit_price_total_return_proxy':'Brookfield India REIT Price','nexus_select_trust_price':'Nexus Select Trust Price','nexus_select_trust_price_total_return_proxy':'Nexus Select Trust Price','indigrid_invit_price':'IndiGrid InvIT Price','indigrid_invit_price_total_return_proxy':'IndiGrid InvIT Price','irb_invit_price':'IRB InvIT Price','irb_invit_price_total_return_proxy':'IRB InvIT Price','powergrid_invit_price':'PowerGrid InvIT Price','powergrid_invit_price_total_return_proxy':'PowerGrid InvIT Price'}
-                series[aliases.get(path.stem,path.stem)]=s.sort_index().pct_change().dropna()
+                series[aliases.get(path.stem,path.stem)]=s.sort_index().pct_change(fill_method=None).dropna()
             except Exception: pass
     # Selected Direct Growth mutual-fund NAVs are expense-net NAV total-return proxies.
     mf_panel = ROOT/'data/mutual_fund_nav'/'selected_nav_panel.csv'
