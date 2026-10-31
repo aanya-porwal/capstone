@@ -29,6 +29,10 @@ st.markdown('''<style>
 html,body,[class*="css"]{font-family:'DM Sans',sans-serif;color:var(--dwms-ink)}
 .stApp{background:var(--dwms-bg)}
 .block-container{max-width:1320px;padding:2.2rem 3rem 4rem}
+section.main > div.block-container:has(.st-key-login-layout){max-width:1440px;min-height:calc(100vh - 4.5rem);display:flex;flex-direction:column;justify-content:center;padding-top:1.25rem;padding-bottom:3rem}
+.st-key-login-layout{width:100%}
+.st-key-login-layout [data-testid="stHorizontalBlock"]{align-items:center;gap:3rem}
+@media(max-width:900px){section.main > div.block-container:has(.st-key-login-layout){min-height:auto;padding:2rem 1.25rem}.st-key-login-layout [data-testid="stHorizontalBlock"]{gap:1.25rem}}
 h1,h2,h3,h4{font-family:'Manrope',sans-serif!important;color:var(--dwms-ink)!important;letter-spacing:-.035em}
 h1{font-size:2.15rem!important;font-weight:750!important;line-height:1.15!important;margin:0 0 .45rem!important}
 h2{font-size:1.5rem!important;font-weight:700!important}
@@ -63,24 +67,27 @@ if 'user' not in st.session_state: st.session_state.user=None
 if 'page' not in st.session_state: st.session_state.page='Overview'
 
 def login_screen():
-    a,b=st.columns([1.15,1])
-    with a:
-        st.markdown("<div class='hero'><h1>Wealth management, made personal.</h1><p>Goal-led financial intelligence for India's next generation of investors.</p></div>",unsafe_allow_html=True)
-        st.subheader('A more considered way to invest')
-        st.write('DWMS connects your goals, financial capacity, risk profile, market context and tax position into one explainable planning experience.')
-        st.caption('Local prototype • Your profile is stored in a SQLite database on this device.')
-    with b:
-        st.subheader('Welcome to DWMS')
-        mode=st.radio('Account', ['Sign in','Create account'],horizontal=True)
-        email=st.text_input('Email address'); password=st.text_input('Password',type='password')
-        if mode=='Create account': st.caption('Use a password with at least 10 characters.')
-        if st.button('Continue',type='primary',use_container_width=True):
-            try:
-                if mode=='Create account': uid=register(email,password); user={'id':uid,'email':email.lower()}
-                else: user=authenticate(email,password)
-                if not user: st.error('Email or password is incorrect.')
-                else: st.session_state.user=user; st.rerun()
-            except ValueError as e: st.error(str(e))
+    # A dedicated keyed container lets the login view centre itself vertically
+    # without changing the layout of the authenticated workspace.
+    with st.container(key="login-layout"):
+        a,b=st.columns([1.08,0.92],gap="large",vertical_alignment="center")
+        with a:
+            st.markdown("<div class='hero'><h1>Wealth management, made personal.</h1><p>Goal-led financial intelligence for India's next generation of investors.</p></div>",unsafe_allow_html=True)
+            st.subheader('A more considered way to invest')
+            st.write('DWMS connects your goals, financial capacity, risk profile, market context and tax position into one explainable planning experience.')
+            st.caption('Local prototype • Your profile is stored in a SQLite database on this device.')
+        with b:
+            st.subheader('Welcome to DWMS')
+            mode=st.radio('Account', ['Sign in','Create account'],horizontal=True)
+            email=st.text_input('Email address'); password=st.text_input('Password',type='password')
+            if mode=='Create account': st.caption('Use a password with at least 10 characters.')
+            if st.button('Continue',type='primary',use_container_width=True):
+                try:
+                    if mode=='Create account': uid=register(email,password); user={'id':uid,'email':email.lower()}
+                    else: user=authenticate(email,password)
+                    if not user: st.error('Email or password is incorrect.')
+                    else: st.session_state.user=user; st.rerun()
+                except ValueError as e: st.error(str(e))
 
 if not st.session_state.user:
     login_screen(); st.stop()
