@@ -178,7 +178,10 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
     tax_cap_satisfied=bool(tax_regime!='Old' or tax_weight<=tax_monthly_cap+tolerance)
     contributions=w*(cov@w)/max(risk,1e-12)
     result=assets[['asset','class','evidence']].copy(); result['weight']=w; result['monthly_amount']=w*monthly_budget; result['risk_contribution']=contributions
-    result=result[result.weight>.002].sort_values('weight',ascending=False)
+    # Keep every positive portfolio position in the returned allocation. Filtering
+    # small weights here makes the reported weights sum to less than one and causes
+    # downstream goal plans to understate invested capital.
+    result=result[result.weight>1e-10].sort_values('weight',ascending=False)
     return {'allocation':result,'expected_return':ret,'volatility':risk,
             'equity_weight':equity_weight,'tax_weight':tax_weight,
             'risk_cap':risk_cap,'risk_cap_satisfied':risk_cap_satisfied,
