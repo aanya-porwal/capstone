@@ -141,7 +141,7 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
     largecap_idx=asset_names.str.contains(r'large\s*cap|largecap',regex=True).to_numpy()
     for i,(_,a) in enumerate(assets.iterrows()):
         cap=.35 if 'equity' in a['class'].lower() else (.30 if a['asset']!='Gold ETF' else .20)
-        if mf_mask[i]: cap=min(cap,.15)
+        if mf_mask[i]: cap=min(cap,.10)
         if a['asset']=='Fixed Deposit': cap=.50
         if a['asset']=='Liquid Fund': cap=.35
         if a['asset']=='International Equity': cap=.20
@@ -151,10 +151,24 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
         bounds.append((0,cap))
     eq_idx=np.array(['equity' in x.lower() for x in assets['class']]); gold_idx=np.array(assets['class']=='Gold')
     tax_idx=np.array(assets['asset'].isin(['ELSS','PPF']))
+    # Concentration guardrails are applied to underlying exposure, not just
+    # individual product names. The limits tighten for shorter horizons and
+    # lower risk scores; they are model controls, not universal advice.
+    smallcap_limit=float(np.interp(risk_score,[0,30,60,100],[.03,.07,.12,.15]))
+    midcap_limit=float(np.interp(risk_score,[0,30,60,100],[.05,.10,.16,.20]))
+    thematic_limit=float(np.interp(risk_score,[0,30,60,100],[.02,.05,.08,.10]))
+    if horizon<=3:
+        smallcap_limit=min(smallcap_limit,.03)
+        midcap_limit=min(midcap_limit,.05)
+        thematic_limit=min(thematic_limit,.02)
+    elif horizon<=5:
+        smallcap_limit=min(smallcap_limit,.05)
+        midcap_limit=min(midcap_limit,.08)
+        thematic_limit=min(thematic_limit,.04)
     style_constraints=[
-        {'type':'ineq','fun':lambda w: .15-w[smallcap_idx].sum()},
-        {'type':'ineq','fun':lambda w: .20-w[midcap_idx].sum()},
-        {'type':'ineq','fun':lambda w: .10-w[sector_idx].sum()},
+        {'type':'ineq','fun':lambda w, m=smallcap_idx, cap=smallcap_limit: cap-w[m].sum()},
+        {'type':'ineq','fun':lambda w, m=midcap_idx, cap=midcap_limit: cap-w[m].sum()},
+        {'type':'ineq','fun':lambda w, m=sector_idx, cap=thematic_limit: cap-w[m].sum()},
     ]
     tax_headroom=max(0,150000-float(existing_80c)) if tax_regime=='Old' else 0.0
     tax_monthly_cap=min(1.0,tax_headroom/max(monthly_budget*12,1)) if tax_regime=='Old' else 0.0
@@ -203,6 +217,8 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
             'risk_cap':risk_cap,'risk_cap_satisfied':risk_cap_satisfied,
             'risk_constraint_relaxed':bool(not risk_cap_satisfied),
             'equity_cap':equity_cap,'equity_cap_satisfied':equity_cap_satisfied,
+            'concentration_limits':{'individual_mutual_fund':.10,'small_cap':smallcap_limit,'mid_cap':midcap_limit,'sector_thematic':thematic_limit},
+            'concentration_satisfied':bool(w[smallcap_idx].sum()<=smallcap_limit+tolerance and w[midcap_idx].sum()<=midcap_limit+tolerance and w[sector_idx].sum()<=thematic_limit+tolerance and all(w[mf_mask]<=.10+tolerance)),
             'tax_regime':tax_regime,'tax_deduction_monthly_cap':tax_monthly_cap,
             'tax_cap_satisfied':tax_cap_satisfied,
             'solver_mode':solver_mode,'fallback_used':fallback_used,
