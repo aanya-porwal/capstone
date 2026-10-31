@@ -131,8 +131,17 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
     if horizon<=3: equity_cap=min(equity_cap,.20); risk_cap=min(risk_cap,.07)
     elif horizon<=5: equity_cap=min(equity_cap,.40); risk_cap=min(risk_cap,.10)
     bounds=[]
-    for _,a in assets.iterrows():
+    asset_names=assets['asset'].astype(str).str.lower()
+    # A mutual-fund scheme is a vehicle, not a separate source of diversification.
+    # Cap each selected fund and constrain concentrated equity styles in aggregate.
+    mf_mask=asset_names.str.contains(r'\b(direct plan|growth option|growth)\b',regex=True).to_numpy()
+    smallcap_idx=asset_names.str.contains(r'small\s*cap|smallcap',regex=True).to_numpy()
+    midcap_idx=asset_names.str.contains(r'mid\s*cap|midcap',regex=True).to_numpy()
+    sector_idx=asset_names.str.contains(r'sector|thematic|pharma|banking|technology|infrastructure',regex=True).to_numpy()
+    largecap_idx=asset_names.str.contains(r'large\s*cap|largecap',regex=True).to_numpy()
+    for i,(_,a) in enumerate(assets.iterrows()):
         cap=.35 if 'equity' in a['class'].lower() else (.30 if a['asset']!='Gold ETF' else .20)
+        if mf_mask[i]: cap=min(cap,.15)
         if a['asset']=='Fixed Deposit': cap=.50
         if a['asset']=='Liquid Fund': cap=.35
         if a['asset']=='International Equity': cap=.20
@@ -142,6 +151,11 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
         bounds.append((0,cap))
     eq_idx=np.array(['equity' in x.lower() for x in assets['class']]); gold_idx=np.array(assets['class']=='Gold')
     tax_idx=np.array(assets['asset'].isin(['ELSS','PPF']))
+    style_constraints=[
+        {'type':'ineq','fun':lambda w: .15-w[smallcap_idx].sum()},
+        {'type':'ineq','fun':lambda w: .20-w[midcap_idx].sum()},
+        {'type':'ineq','fun':lambda w: .10-w[sector_idx].sum()},
+    ]
     tax_headroom=max(0,150000-float(existing_80c)) if tax_regime=='Old' else 0.0
     tax_monthly_cap=min(1.0,tax_headroom/max(monthly_budget*12,1)) if tax_regime=='Old' else 0.0
     def stats(w): return float(w@mu),float(np.sqrt(max(w@cov@w,0)))
@@ -153,7 +167,7 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
             return float(np.sum((rc-rc.mean())**2))
         # robust return-risk utility with downside-risk proxy
         return -(ret-.55*risk**2)
-    cons=[{'type':'eq','fun':lambda w:w.sum()-1},{'type':'ineq','fun':lambda w:equity_cap-w[eq_idx].sum()},{'type':'ineq','fun':lambda w:risk_cap-stats(w)[1]}]
+    cons=[{'type':'eq','fun':lambda w:w.sum()-1},{'type':'ineq','fun':lambda w:equity_cap-w[eq_idx].sum()},{'type':'ineq','fun':lambda w:risk_cap-stats(w)[1]}]+style_constraints
     if tax_regime=='Old': cons.append({'type':'ineq','fun':lambda w:tax_monthly_cap-w[tax_idx].sum()})
     x0=np.ones(n)/n
     res=minimize(obj,x0,method='SLSQP',bounds=bounds,constraints=cons,options={'maxiter':1200,'ftol':1e-10})
@@ -165,7 +179,7 @@ def optimise(returns, risk_score=50, horizon=10, monthly_budget=10000, objective
         fallback_used=True
         solver_mode='minimum_variance_fallback_without_risk_cap'
         fallback_cons=[{'type':'eq','fun':lambda w:w.sum()-1},
-                       {'type':'ineq','fun':lambda w:equity_cap-w[eq_idx].sum()}]
+                       {'type':'ineq','fun':lambda w:equity_cap-w[eq_idx].sum()}]+style_constraints
         if tax_regime=='Old':
             fallback_cons.append({'type':'ineq','fun':lambda w:tax_monthly_cap-w[tax_idx].sum()})
         res=minimize(lambda w: w@cov@w,x0,method='SLSQP',bounds=bounds,
